@@ -1,0 +1,38 @@
+# macOS and editors
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Private student records and generated grading output
+/data/
+/uploads/
+/exports/
+/private/
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials*.json
+service-account*.json
+
+# Dependencies, caches, and build output
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+coverage/
+*.log
+
+# Machine-local Codex state; keep shared configuration tracked
+.codex/*
+!.codex/config.toml
