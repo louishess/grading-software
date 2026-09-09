@@ -211,16 +211,14 @@ public enum DocumentPDFExporter {
     private static func platformColor(hex: String) -> NSColor {
       NSColor(cgColor: cgColor(hex: hex)) ?? .systemYellow
     }
-    private static var platformTextColor: NSColor { .labelColor }
-    private static var platformNoteColor: NSColor { .textBackgroundColor.withAlphaComponent(0.88) }
+    private static var platformTextColor: NSColor { .black }
+    private static var platformNoteColor: NSColor { .white.withAlphaComponent(0.92) }
   #elseif canImport(UIKit)
     private static func platformColor(hex: String) -> UIColor {
       UIColor(cgColor: cgColor(hex: hex))
     }
-    private static var platformTextColor: UIColor { .label }
-    private static var platformNoteColor: UIColor {
-      .secondarySystemBackground.withAlphaComponent(0.88)
-    }
+    private static var platformTextColor: UIColor { .black }
+    private static var platformNoteColor: UIColor { .white.withAlphaComponent(0.92) }
   #endif
 
   private static func cgColor(hex: String) -> CGColor {
