@@ -118,7 +118,7 @@ func runWorkflowChecks() async throws {
   try require(try Data(contentsOf: original) == originalBytes, "Original changed after export")
   let reopened = try WorkspaceRepository(rootURL: root.appendingPathComponent("Mac"))
   let reloaded = try await reopened.loadWorkspace(containerID: workspace.containerID)
-  try require(reloaded == workspace, "Reopening changed saved workspace")
+  try require(equivalentStoredWorkspace(reloaded, workspace), "Reopening changed saved workspace")
   let archive = root.appendingPathComponent("acceptance.gradingworkspace")
   _ = try await repository.exportWorkspace(containerID: workspace.containerID, destination: archive)
   let secondDevice = try WorkspaceRepository(
@@ -128,9 +128,10 @@ func runWorkflowChecks() async throws {
     imported.workspace.id == workspace.id
       && imported.workspace.containerID != workspace.containerID,
     "Transfer must preserve logical identity with new local container")
+  var expectedTransferred = workspace
+  expectedTransferred.containerID = imported.workspace.containerID
   try require(
-    imported.workspace.assignments == workspace.assignments
-      && imported.workspace.identities == workspace.identities,
+    equivalentStoredWorkspace(imported.workspace, expectedTransferred),
     "Transfer lost marks, OCR, grades, or identities")
   let duplicate = try await secondDevice.importWorkspace(from: archive)
   try require(duplicate.wasDuplicate, "Same revision import was not recognized")
@@ -163,7 +164,9 @@ func runWorkflowChecks() async throws {
     returned.isSeparateCopy && !returned.wasDuplicate,
     "Divergent transfer must retain a separate copy")
   let untouched = try await repository.loadWorkspace(containerID: workspace.containerID)
-  try require(untouched == workspace, "Divergent transfer replaced the active original")
+  try require(
+    equivalentStoredWorkspace(untouched, workspace),
+    "Divergent transfer replaced the active original")
   try require(try Data(contentsOf: original) == originalBytes, "Transfer changed source bytes")
 }
 
@@ -194,4 +197,38 @@ private func makeWorkflowPDF(at url: URL) throws {
 }
 private func require(_ condition: @autoclosure () throws -> Bool, _ message: String) throws {
   guard try condition() else { throw WorkflowCheckFailure(description: message) }
+}
+
+// JSON's milliseconds-since-1970 representation may shift Date's floating-point
+// reference epoch by a fraction of a microsecond. Compare those timestamps within
+// one microsecond, while requiring exact equality for every grading/evidence field.
+private func equivalentStoredWorkspace(_ stored: WorkspaceData, _ original: WorkspaceData) -> Bool {
+  var compared = stored
+  guard abs(compared.modifiedAt.timeIntervalSince(original.modifiedAt)) < 0.000001,
+    compared.assignments.count == original.assignments.count
+  else { return false }
+  compared.modifiedAt = original.modifiedAt
+  for a in compared.assignments.indices {
+    guard compared.assignments[a].submissions.count == original.assignments[a].submissions.count
+    else { return false }
+    for s in compared.assignments[a].submissions.indices {
+      let expected = original.assignments[a].submissions[s]
+      guard
+        abs(
+          compared.assignments[a].submissions[s].ocr.createdAt.timeIntervalSince(
+            expected.ocr.createdAt)) < 0.000001,
+        compared.assignments[a].submissions[s].history.count == expected.history.count
+      else { return false }
+      compared.assignments[a].submissions[s].ocr.createdAt = expected.ocr.createdAt
+      for h in expected.history.indices {
+        guard
+          abs(
+            compared.assignments[a].submissions[s].history[h].date.timeIntervalSince(
+              expected.history[h].date)) < 0.000001
+        else { return false }
+        compared.assignments[a].submissions[s].history[h].date = expected.history[h].date
+      }
+    }
+  }
+  return compared == original
 }

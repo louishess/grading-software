@@ -9,12 +9,17 @@ public struct LiveReviewPane: View {
   public let assignment: WorkAssignment
   public let submission: WorkSubmission?
   public let readOnly: Bool
+  public let saveError: String?
   public let onAssignmentChange: (WorkAssignment) -> Void
   public let onSubmissionChange: (WorkSubmission) -> Void
   public let onImportReference: (UUID) -> Void
 
   @State private var scoreDrafts: [UUID: String]
   @State private var feedbackDraft: String
+  @State private var authoritativeScoreTexts: [UUID: String]
+  @State private var authoritativeFeedback: String
+  @State private var pendingScoreTexts: [UUID: String] = [:]
+  @State private var pendingFeedback: String?
   @State private var scoreErrors: [UUID: String] = [:]
   @State private var feedbackError: String?
   @State private var actionError: String?
@@ -25,6 +30,7 @@ public struct LiveReviewPane: View {
     assignment: WorkAssignment,
     submission: WorkSubmission?,
     readOnly: Bool,
+    saveError: String? = nil,
     onAssignmentChange: @escaping (WorkAssignment) -> Void,
     onSubmissionChange: @escaping (WorkSubmission) -> Void,
     onImportReference: @escaping (UUID) -> Void
@@ -32,11 +38,16 @@ public struct LiveReviewPane: View {
     self.assignment = assignment
     self.submission = submission
     self.readOnly = readOnly
+    self.saveError = saveError
     self.onAssignmentChange = onAssignmentChange
     self.onSubmissionChange = onSubmissionChange
     self.onImportReference = onImportReference
-    _scoreDrafts = State(initialValue: Self.scoreTexts(for: assignment, submission: submission))
-    _feedbackDraft = State(initialValue: submission?.feedback ?? "")
+    let initialScoreTexts = Self.scoreTexts(for: assignment, submission: submission)
+    let initialFeedback = submission?.feedback ?? ""
+    _scoreDrafts = State(initialValue: initialScoreTexts)
+    _feedbackDraft = State(initialValue: initialFeedback)
+    _authoritativeScoreTexts = State(initialValue: initialScoreTexts)
+    _authoritativeFeedback = State(initialValue: initialFeedback)
   }
 
   public var body: some View {
@@ -56,20 +67,31 @@ public struct LiveReviewPane: View {
         if let actionError {
           LiveReviewMessage(text: actionError, systemImage: "exclamationmark.triangle")
         }
+        if let saveError {
+          LiveReviewMessage(text: saveError, systemImage: "externaldrive.badge.exclamationmark")
+        }
       }
       .padding(16)
       .frame(maxWidth: .infinity, alignment: .leading)
     }
     .background(WorkspaceStyle.background)
     .onChange(of: submission?.id) { _, _ in
-      syncTransientState()
+      resetTransientState()
     }
     .onChange(of: submission?.reviewRevisionID) { _, _ in
-      syncTransientState()
+      reconcileTransientState()
+    }
+    .onChange(of: saveError) { _, newValue in
+      if newValue != nil {
+        pendingScoreTexts = [:]
+        pendingFeedback = nil
+      }
     }
     .sheet(isPresented: $isRubricEditorPresented) {
       LiveRubricEditor(
         assignment: assignment,
+        readOnly: readOnly,
+        saveError: saveError,
         onAssignmentChange: onAssignmentChange,
         onImportReference: onImportReference
       )
@@ -635,8 +657,8 @@ public struct LiveReviewPane: View {
       )
       scoreErrors[criterion.id] = nil
       actionError = nil
+      pendingScoreTexts[criterion.id] = next.scores[criterion.id]?.value.decimalString ?? ""
       onSubmissionChange(next)
-      syncTransientState(from: next)
     } catch {
       scoreErrors[criterion.id] = error.localizedDescription
     }
@@ -666,7 +688,6 @@ public struct LiveReviewPane: View {
       )
       actionError = nil
       onSubmissionChange(next)
-      syncTransientState(from: next)
     } catch {
       actionError = error.localizedDescription
     }
@@ -684,9 +705,8 @@ public struct LiveReviewPane: View {
       )
       feedbackError = nil
       actionError = nil
-      isFeedbackDirty = false
+      pendingFeedback = next.feedback
       onSubmissionChange(next)
-      syncTransientState(from: next)
     } catch {
       feedbackError = error.localizedDescription
     }
@@ -704,7 +724,6 @@ public struct LiveReviewPane: View {
       )
       actionError = nil
       onSubmissionChange(next)
-      syncTransientState(from: next)
     } catch {
       actionError = error.localizedDescription
     }
@@ -756,16 +775,49 @@ public struct LiveReviewPane: View {
     }
   }
 
-  private func syncTransientState() {
-    syncTransientState(from: submission)
-  }
-
-  private func syncTransientState(from value: WorkSubmission?) {
-    scoreDrafts = Self.scoreTexts(for: assignment, submission: value)
-    feedbackDraft = value?.feedback ?? ""
+  private func resetTransientState() {
+    let incomingScores = Self.scoreTexts(for: assignment, submission: submission)
+    let incomingFeedback = submission?.feedback ?? ""
+    scoreDrafts = incomingScores
+    feedbackDraft = incomingFeedback
+    authoritativeScoreTexts = incomingScores
+    authoritativeFeedback = incomingFeedback
+    pendingScoreTexts = [:]
+    pendingFeedback = nil
     scoreErrors = [:]
     feedbackError = nil
     isFeedbackDirty = false
+  }
+
+  private func reconcileTransientState() {
+    let incomingScores = Self.scoreTexts(for: assignment, submission: submission)
+    let criterionIDs = Set(assignment.criteria.map(\.id))
+
+    for criterionID in criterionIDs {
+      let prior = authoritativeScoreTexts[criterionID] ?? ""
+      let incoming = incomingScores[criterionID] ?? ""
+      let currentDraft = scoreDrafts[criterionID] ?? prior
+      if pendingScoreTexts[criterionID] == incoming || currentDraft == prior {
+        scoreDrafts[criterionID] = incoming
+      }
+    }
+    scoreDrafts = scoreDrafts.filter { criterionIDs.contains($0.key) }
+    pendingScoreTexts = pendingScoreTexts.filter { criterionIDs.contains($0.key) }
+    for criterionID in criterionIDs
+    where pendingScoreTexts[criterionID] == incomingScores[criterionID] {
+      pendingScoreTexts[criterionID] = nil
+    }
+    authoritativeScoreTexts = incomingScores
+
+    let incomingFeedback = submission?.feedback ?? ""
+    if pendingFeedback == incomingFeedback || feedbackDraft == authoritativeFeedback {
+      feedbackDraft = incomingFeedback
+    }
+    if pendingFeedback == incomingFeedback {
+      pendingFeedback = nil
+    }
+    authoritativeFeedback = incomingFeedback
+    isFeedbackDirty = feedbackDraft != incomingFeedback
   }
 
   private static func scoreTexts(

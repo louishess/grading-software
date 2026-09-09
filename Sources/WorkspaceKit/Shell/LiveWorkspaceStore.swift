@@ -159,7 +159,17 @@ final class LiveWorkspaceStore {
         let s = data.assignments[a].submissions.firstIndex(where: { $0.id == updated.id }),
         data.assignments[a].submissions[s].reviewRevisionID == expectedReviewRevision
       else { throw WorkspaceFailure.staleRevision }
-      data.assignments[a].submissions[s] = updated
+      // A grading callback owns only grading fields. Preserve newer display masks
+      // and source evidence held by the authoritative workspace.
+      var saved = data.assignments[a].submissions[s]
+      saved.scores = updated.scores
+      saved.feedback = updated.feedback
+      saved.status = updated.status
+      saved.reviewRevisionID = updated.reviewRevisionID
+      saved.approvedReviewRevisionID = updated.approvedReviewRevisionID
+      saved.approvedRubricRevisionID = updated.approvedRubricRevisionID
+      saved.history = updated.history
+      data.assignments[a].submissions[s] = saved
     }
   }
 
@@ -262,8 +272,9 @@ final class LiveWorkspaceStore {
   }
   func removeMark(_ id: UUID) async {
     let prior = submission?.marks ?? []
+    guard let existing = prior.first(where: { $0.id == id }) else { return }
     await editSubmissionEvidence(
-      "Removing annotation", invalidatesReview: prior.first { $0.id == id }?.kind != .displayMask
+      "Removing annotation", invalidatesReview: existing.kind != .displayMask
     ) { $0.marks.removeAll { $0.id == id } }
     if errorMessage == nil { markUndo.append(prior) }
   }
@@ -295,6 +306,7 @@ final class LiveWorkspaceStore {
     await editSubmissionEvidence(
       "Saving transcription", expectedReviewRevision: expectedReviewRevision
     ) { value in
+      guard value.ocr.blocks != blocks else { return }
       value.ocr.blocks = blocks
       value.ocr.revisionID = UUID()
     }
@@ -390,7 +402,8 @@ final class LiveWorkspaceStore {
           try GradeExportEngine.json(snapshot).write(
             to: destination.appendingPathComponent("approved-grades.json"), options: .atomic)
         }
-        for record in snapshot.records {
+        for record in snapshot.records
+        where options.formats.contains(.editablePDF) || options.formats.contains(.flattenedPDF) {
           guard
             let submission = assignment.submissions.first(where: { $0.id == record.submissionID })
           else { throw GradeExportFailure.staleSnapshot }
@@ -474,14 +487,17 @@ final class LiveWorkspaceStore {
       {
         throw WorkspaceFailure.staleRevision
       }
-      let revision = data.assignments[a].rubricRevisionID
+      let original = data.assignments[a].submissions[s]
+      var changed = original
+      try change(&changed)
+      guard changed != original else { return }
       if invalidatesReview {
         GradingEngine.invalidate(
-          submission: &data.assignments[a].submissions[s], rubricRevisionID: revision,
+          submission: &changed, rubricRevisionID: data.assignments[a].rubricRevisionID,
           reason: message
         )
       }
-      try change(&data.assignments[a].submissions[s])
+      data.assignments[a].submissions[s] = changed
     }
   }
   private func edit(_ message: String, change: (inout WorkspaceData) throws -> Void) async {
@@ -500,8 +516,20 @@ final class LiveWorkspaceStore {
       }
       var changed = current
       try change(&changed)
-      self.workspace = try await repository.saveWorkspace(
-        changed, expectedRevision: current.revisionID)
+      guard changed != current else { return }
+      do {
+        self.workspace = try await repository.saveWorkspace(
+          changed, expectedRevision: current.revisionID)
+      } catch {
+        if case WorkspaceFailure.staleRevision = error,
+          let latest = try? await repository.loadWorkspace(containerID: current.containerID)
+        {
+          self.workspace = latest
+          try await self.refreshInputs()
+          try await self.reloadSummaries()
+        }
+        throw error
+      }
       try await self.refreshInputs()
       try await self.reloadSummaries()
     }

@@ -11,6 +11,7 @@ import SwiftUI
       return view
     }
     func updateNSView(_ view: ActivityView, context: Context) { view.onActivity = onActivity }
+    static func dismantleNSView(_ view: ActivityView, coordinator: ()) { view.stopMonitoring() }
 
     final class ActivityView: NSView {
       var onActivity: (() -> Void)?
@@ -29,7 +30,12 @@ import SwiftUI
           return event
         }
       }
-      deinit { if let monitor { NSEvent.removeMonitor(monitor) } }
+      func stopMonitoring() {
+        if let monitor {
+          NSEvent.removeMonitor(monitor)
+          self.monitor = nil
+        }
+      }
     }
   }
 #else

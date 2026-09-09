@@ -410,6 +410,7 @@ public struct WorkspaceRootView: View {
           LiveReviewPane(
             assignment: assignment, submission: store.submission,
             readOnly: readOnly || store.isBusy || store.isExporting,
+            saveError: store.errorMessage,
             onAssignmentChange: { updated in
               Task {
                 await store.saveAssignment(

@@ -10,6 +10,7 @@ struct FunctionalCheckRunner {
       ("Grading, approval, statistics, and structured exports", { try runGradingChecks() }),
       ("Document geometry, OCR, and PDF exports", { try await runDocumentChecks() }),
       ("Complete local grading and transfer workflow", { try await runWorkflowChecks() }),
+      ("Image formats, EXIF rotation, and crop alignment", { try await runImageWorkflowChecks() }),
     ]
     for (name, run) in checks {
       do {
