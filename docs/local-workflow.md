@@ -50,7 +50,7 @@ The iPhone interface imports workspace copies and supports read-only document an
 
 The optional device-owner lock starts disabled. When enabled, the app uses LocalAuthentication and supported system password/passcode fallback, and relocks after backgrounding or five minutes without activity. Lock preferences stay on the device and are excluded from transfer archives. This is not institutional authorization or database encryption.
 
-Identity masking uses aliases in supported labels and accessibility descriptions. Manually selected display masks conceal regions in the reader. These are reversible viewing controls, not secure redaction. Originals, handwriting, file metadata, and identifying text remain in workspace archives and may appear in PDF exports.
+Identity masking uses aliases in supported labels and accessibility descriptions. Manually selected display masks conceal regions in the reader. While masking is enabled, native PDF accessibility content and OCR text/crops are hidden conservatively; reader controls remain available. These are reversible viewing controls, not secure redaction. Originals, handwriting, file metadata, and identifying text remain in workspace archives and may appear in PDF exports.
 
 ## Storage and recovery
 

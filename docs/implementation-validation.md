@@ -41,7 +41,11 @@ The local Mac package is ad hoc signed for the build machine's architecture. Not
 - Storage: [PR #2](https://github.com/louishess/grading-software/pull/2), merged after its focused suite.
 - Grading: [PR #3](https://github.com/louishess/grading-software/pull/3), merged after its focused suite.
 - Cross-connection stale-save correction: [PR #4](https://github.com/louishess/grading-software/pull/4), merged after a simultaneous-save regression.
-- Documents: [PR #5](https://github.com/louishess/grading-software/pull/5), final integration review in progress.
+- Documents: [PR #5](https://github.com/louishess/grading-software/pull/5), merged after native reader, crop, correction and PDF acceptance.
+
+- Accessibility masking: [PR #7](https://github.com/louishess/grading-software/pull/7), merged after the packaged PDF accessibility subtree was verified hidden under masking.
+- Archive timestamp precision: [PR #8](https://github.com/louishess/grading-software/pull/8), merged after a deterministic nonzero codec-delta regression and integrated/offline checks.
+- Platform and shell integration: [PR #6](https://github.com/louishess/grading-software/pull/6), gated by final Mac tests and iOS Simulator compilation.
 
 ## Packaged Mac acceptance
 
@@ -54,6 +58,7 @@ The ad hoc signed Mac app was launched independently with a dedicated synthetic 
 - A full workspace archive saves through its native destination dialog.
 - Document import presents candidate association and ordering; importing the same source again is recognized without changing the approved revision.
 - Import from inside the rubric editor waits until the editor is dismissed; cancelling the native picker returns without a false failure alert.
+- A zero-border-width display mask saves, remains opaque after reopening, leaves approval current, and hides the native PDF accessibility subtree when masking is enabled. The original document remains unchanged.
 - Light and dark presentation and accessible control labels were inspected. The statistics view shows the current approved population.
 
 The live inspection caught and corrected overlay installation order, competing native file dialogs, crop/correction editing gaps, a zero-width display-mask validation mismatch, and unnecessary reader replacement during ordinary saves. Interface screenshots were inspected in the task; no claim is made that a complete VoiceOver session or every minimum-size layout was exercised.
@@ -62,5 +67,9 @@ Native editable/flattened export images were visually inspected. The original eq
 
 ## Continuous integration
 
-[The integration build](https://github.com/louishess/grading-software/actions/runs/34304969792) passed Mac compilation/tests and a generic iOS Simulator build. This confirms iOS compilation, not simulator interaction or physical-device acceptance. A final head build is required before merging integration.
+[The integration build](https://github.com/louishess/grading-software/actions/runs/34304969792) passed Mac compilation/tests and a generic iOS Simulator build. This confirms iOS compilation, not simulator interaction or physical-device acceptance. The final head status is recorded in [PR #6 checks](https://github.com/louishess/grading-software/pull/6/checks); a passing Mac/test/iOS Simulator job is required before integration merges.
 
+
+## Timestamp precision regression
+
+Final acceptance reproduced an intermittent false archive rejection from comparing decoded JSON milliseconds with SQLite seconds using exact Date equality. Archive timestamp comparisons now require an absolute difference strictly below one microsecond. A deterministic fixture asserts a nonzero codec round-trip delta and verifies both acceptance and rejection boundaries. Revision IDs, parents, hashes, scores and all evidence remain exact. The full five suites passed again after this fix, including a repeat with network access denied.
