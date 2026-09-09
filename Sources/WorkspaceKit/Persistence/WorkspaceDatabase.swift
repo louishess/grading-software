@@ -35,6 +35,7 @@ final class WorkspaceDatabase: @unchecked Sendable {
     }
     var configuration = Configuration()
     configuration.label = "GradingWorkspace.\(directory.lastPathComponent)"
+    configuration.busyMode = .timeout(5)
     configuration.prepareDatabase { db in
       try db.execute(sql: "PRAGMA foreign_keys = ON")
       try db.execute(sql: "PRAGMA journal_mode = WAL")
@@ -132,7 +133,15 @@ final class WorkspaceDatabase: @unchecked Sendable {
   }
 
   func save(_ data: WorkspaceData, expectedRevision: UUID) throws -> WorkspaceData {
-    try queue.writeWithoutTransaction { db in
+    guard data.revisionID == expectedRevision else { throw WorkspaceFailure.staleRevision }
+    var saved = data
+    saved.parentRevisionID = expectedRevision
+    saved.revisionID = UUID()
+    saved.modifiedAt = Date()
+    try WorkspaceValidation.validate(saved, expectedContainerID: data.containerID)
+    let payload = try StorageCodec.snapshotPayload(saved)
+
+    return try queue.write { db in
       guard
         let row = try Row.fetchOne(
           db,
@@ -143,40 +152,31 @@ final class WorkspaceDatabase: @unchecked Sendable {
       guard row["workspace_id"] as String == data.id.uuidString,
         row["container_id"] as String == data.containerID.uuidString
       else { throw WorkspaceFailure.invalid("The workspace identity cannot be changed.") }
-      guard row["head_revision_id"] as String == expectedRevision.uuidString,
-        data.revisionID == expectedRevision
-      else { throw WorkspaceFailure.staleRevision }
-
-      var saved = data
-      saved.parentRevisionID = expectedRevision
-      saved.revisionID = UUID()
-      saved.modifiedAt = Date()
-      try WorkspaceValidation.validate(saved, expectedContainerID: data.containerID)
-      let payload = try StorageCodec.snapshotPayload(saved)
-      try db.inTransaction {
-        try db.execute(
-          sql: """
-            INSERT INTO workspace_revisions
-              (revision_id, parent_revision_id, created_at, snapshot)
-            VALUES (?, ?, ?, ?)
-            """,
-          arguments: [
-            saved.revisionID.uuidString, expectedRevision.uuidString,
-            saved.modifiedAt.timeIntervalSince1970, payload,
-          ])
-        try insertRevisionIdentities(saved.identities, revisionID: saved.revisionID, in: db)
-        try replaceIdentities(saved.identities, in: db)
-        try db.execute(
-          sql: """
-            UPDATE workspace_metadata
-            SET title = ?, head_revision_id = ?, modified_at = ?
-            WHERE singleton = 1
-            """,
-          arguments: [
-            saved.title, saved.revisionID.uuidString, saved.modifiedAt.timeIntervalSince1970,
-          ])
-        return .commit
+      guard row["head_revision_id"] as String == expectedRevision.uuidString else {
+        throw WorkspaceFailure.staleRevision
       }
+
+      try db.execute(
+        sql: """
+          INSERT INTO workspace_revisions
+            (revision_id, parent_revision_id, created_at, snapshot)
+          VALUES (?, ?, ?, ?)
+          """,
+        arguments: [
+          saved.revisionID.uuidString, expectedRevision.uuidString,
+          saved.modifiedAt.timeIntervalSince1970, payload,
+        ])
+      try insertRevisionIdentities(saved.identities, revisionID: saved.revisionID, in: db)
+      try replaceIdentities(saved.identities, in: db)
+      try db.execute(
+        sql: """
+          UPDATE workspace_metadata
+          SET title = ?, head_revision_id = ?, modified_at = ?
+          WHERE singleton = 1
+          """,
+        arguments: [
+          saved.title, saved.revisionID.uuidString, saved.modifiedAt.timeIntervalSince1970,
+        ])
       return saved
     }
   }
