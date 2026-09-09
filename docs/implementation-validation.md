@@ -43,4 +43,24 @@ The local Mac package is ad hoc signed for the build machine's architecture. Not
 - Cross-connection stale-save correction: [PR #4](https://github.com/louishess/grading-software/pull/4), merged after a simultaneous-save regression.
 - Documents: [PR #5](https://github.com/louishess/grading-software/pull/5), final integration review in progress.
 
-Packaged UI, export image review, and CI results are recorded below as they complete.
+## Packaged Mac acceptance
+
+The ad hoc signed Mac app was launched independently with a dedicated synthetic workspace root. Live checks confirmed:
+
+- Persisted highlights and notes appear in Select mode after reopening.
+- A dragged equation crop displays the source equation, accepts a revised width, and saves an explicit teacher correction.
+- The evidence change returns Approved work to Draft, retains the score as unconfirmed, and permits reconfirmation → Reviewed → Approved with history preserved.
+- Native export preflight and destination selection save CSV, JSON, editable PDF and flattened PDF together. Saved CSV contains the exact 8.75 score and omits the optional student name.
+- A full workspace archive saves through its native destination dialog.
+- Document import presents candidate association and ordering; importing the same source again is recognized without changing the approved revision.
+- Import from inside the rubric editor waits until the editor is dismissed; cancelling the native picker returns without a false failure alert.
+- Light and dark presentation and accessible control labels were inspected. The statistics view shows the current approved population.
+
+The live inspection caught and corrected overlay installation order, competing native file dialogs, crop/correction editing gaps, a zero-width display-mask validation mismatch, and unnecessary reader replacement during ordinary saves. Interface screenshots were inspected in the task; no claim is made that a complete VoiceOver session or every minimum-size layout was exercised.
+
+Native editable/flattened export images were visually inspected. The original equation, highlight and teacher note were present, and the editable/flattened annotation counts were checked programmatically. Display masks are excluded from PDF exports.
+
+## Continuous integration
+
+[The integration build](https://github.com/louishess/grading-software/actions/runs/34304969792) passed Mac compilation/tests and a generic iOS Simulator build. This confirms iOS compilation, not simulator interaction or physical-device acceptance. A final head build is required before merging integration.
+

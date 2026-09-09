@@ -15,7 +15,7 @@ The user approved the functional implementation plan in docs/implementation-plan
 - PM may dispatch up to THREE gpt-5.6-sol agents at high effort. Each may dispatch at most ONE gpt-5.6-luna child at max effort, with no deeper delegation. Six subagents maximum, subject to runtime capacity. Use fewer when sufficient.
 - Explicit model/effort dispatches use fork_turns none with complete task context.
 - Each agent edits only its assigned file allowlist. Parent and child have disjoint writes. Request PM changes to shared files rather than editing them.
-- Each Sol team works in its own PM-created worktree/branch and may commit only its assigned files, push that branch without force, and open a PR to main. Luna may not mutate Git. No agent may merge to main, rewrite history, reset, clean, or alter another team branch. PM reviews and merges validated PRs.
+- Each Sol team works in its own PM-created worktree/branch. PM stages and commits only that team's assigned files, pushes without force, and opens its PR to main. Subagents do not mutate Git. PM reviews and merges validated PRs without rewriting history, resetting, cleaning, or altering unrelated work.
 - PM runs integrated builds/tests; agents may author focused tests and format only owned files.
 - Report changed paths, validation, limitations and shared-interface requests. Preserve unrelated user changes.
 - Preserve .codex/config.toml concurrency 8 and legacy depth 2. Enforce the approved narrower structure through dispatch.

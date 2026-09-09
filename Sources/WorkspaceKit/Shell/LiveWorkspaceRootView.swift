@@ -12,8 +12,9 @@ public struct WorkspaceRootView: View {
   @Environment(\.scenePhase) private var scenePhase
   @State private var panel: InspectorPanel = .rubric
   @State private var sheet: WorkspaceSheet?
-  @State private var importingDocuments = false
-  @State private var importingArchive = false
+  @State private var showsImporter = false
+  @State private var importIsArchive = false
+  @State private var pendingPresentation: PendingPresentation?
   @State private var referencePartID: UUID?
   @State private var pendingURLs: [URL] = []
   @State private var showsImportPreview = false
@@ -21,10 +22,8 @@ public struct WorkspaceRootView: View {
   @State private var showsDemo = false
   @State private var compactTab = 0
   @State private var selectedReferenceID: UUID?
-  @State private var exportFolder: WorkspaceExportFolder?
-  @State private var showsGradeExporter = false
-  @State private var archiveFile: WorkspaceArchiveFile?
-  @State private var showsArchiveExporter = false
+  @State private var exportDocument: WorkspaceExportDocument?
+  @State private var showsExporter = false
 
   public init() {}
   private var readOnly: Bool {
@@ -65,10 +64,10 @@ public struct WorkspaceRootView: View {
         sheet = nil
         showsDemo = false
         showsImportPreview = false
-        importingDocuments = false
-        importingArchive = false
-        showsGradeExporter = false
-        showsArchiveExporter = false
+        pendingPresentation = nil
+        showsImporter = false
+        showsExporter = false
+        cleanupExport()
       }
     }
   }
@@ -134,7 +133,7 @@ public struct WorkspaceRootView: View {
       store.appearance == .system ? nil : store.appearance == .dark ? .dark : .light
     )
     .task { await store.start() }
-    .sheet(item: $sheet) { selected in sheetContent(selected) }
+    .sheet(item: $sheet, onDismiss: presentPendingAction) { selected in sheetContent(selected) }
     .sheet(isPresented: $showsDemo) {
       VStack {
         HStack {
@@ -149,20 +148,19 @@ public struct WorkspaceRootView: View {
       #endif
     }
     .fileImporter(
-      isPresented: $importingDocuments, allowedContentTypes: [.pdf, .jpeg, .png, .heic],
-      allowsMultipleSelection: true
+      isPresented: $showsImporter,
+      allowedContentTypes: importIsArchive ? [.data] : [.pdf, .jpeg, .png, .heic],
+      allowsMultipleSelection: !importIsArchive
     ) { result in
       do {
-        pendingURLs = try result.get()
-        showsImportPreview = !pendingURLs.isEmpty
-      } catch { store.errorMessage = error.localizedDescription }
-    }
-    .fileImporter(
-      isPresented: $importingArchive, allowedContentTypes: [.data], allowsMultipleSelection: false
-    ) { result in
-      do {
-        if let url = try result.get().first { Task { await store.importArchive(from: url) } }
-      } catch { store.errorMessage = error.localizedDescription }
+        let urls = try result.get()
+        if importIsArchive {
+          if let url = urls.first { Task { await store.importArchive(from: url) } }
+        } else {
+          pendingURLs = urls
+          showsImportPreview = !pendingURLs.isEmpty
+        }
+      } catch { reportFileError(error) }
     }
     .sheet(isPresented: $showsImportPreview) {
       DocumentImportPreview(
@@ -178,32 +176,23 @@ public struct WorkspaceRootView: View {
       }
     }
     .fileExporter(
-      isPresented: $showsGradeExporter, document: exportFolder, contentType: .folder,
-      defaultFilename: "Grading export"
-    ) { result in
-      switch result {
-      case .success: store.notice = "Approved export saved."
-      case .failure(let error): store.errorMessage = error.localizedDescription
-      }
-      store.isExporting = false
-      if let directory = exportFolder?.directory {
-        try? FileManager.default.removeItem(at: directory)
-      }
-      exportFolder = nil
-    }
-    .fileExporter(
-      isPresented: $showsArchiveExporter, document: archiveFile, contentType: .data,
-      defaultFilename: "Workspace.gradingworkspace"
+      isPresented: $showsExporter, document: exportDocument,
+      contentTypes: [exportDocument?.contentType ?? .data],
+      defaultFilename: exportDocument?.isArchive == true
+        ? "Workspace.gradingworkspace" : "Grading export"
     ) { result in
       switch result {
       case .success:
-        store.notice = "Workspace archive saved. It contains original documents and identities."
-      case .failure(let error): store.errorMessage = error.localizedDescription
+        store.notice =
+          exportDocument?.isArchive == true
+          ? "Workspace archive saved. It contains original documents and identities."
+          : "Approved export saved."
+      case .failure(let error): reportFileError(error)
       }
-      if let url = archiveFile?.url { try? FileManager.default.removeItem(at: url) }
-      archiveFile = nil
+      cleanupExport()
+    } onCancellation: {
+      cleanupExport()
     }
-    .onChange(of: showsGradeExporter) { _, visible in if !visible { store.isExporting = false } }
     .alert(
       "Operation could not finish",
       isPresented: Binding(
@@ -238,7 +227,10 @@ public struct WorkspaceRootView: View {
   private var workspaceMenu: some View {
     Menu {
       if !readOnly { Button("New workspace") { sheet = .workspace } }
-      Button("Import workspace copy") { importingArchive = true }
+      Button("Import workspace copy") {
+        importIsArchive = true
+        showsImporter = true
+      }
       Button("Workspace copies and backups") { sheet = .transfer }
       Divider()
       ForEach(store.summaries) { item in
@@ -272,6 +264,7 @@ public struct WorkspaceRootView: View {
           } label: {
             Image(systemName: "square.and.arrow.up")
           }.help("Export approved work").accessibilityLabel("Export approved work")
+            .disabled(store.isBusy || store.isExporting)
         }
       }
       Menu {
@@ -298,10 +291,15 @@ public struct WorkspaceRootView: View {
       if !readOnly {
         Button("Create workspace") { sheet = .workspace }.buttonStyle(.borderedProminent)
       }
-      Button("Import workspace copy") { importingArchive = true }
+      Button("Import workspace copy") {
+        importIsArchive = true
+        showsImporter = true
+      }
       if !store.summaries.isEmpty {
         ForEach(store.summaries) { item in
-          Button("Open \(item.title)") { Task { await store.selectWorkspace(item.containerID) } }
+          Button("Open \(item.title) · \(item.containerID.uuidString.prefix(6))") {
+            Task { await store.selectWorkspace(item.containerID) }
+          }
         }
       }
       Button("Explore synthetic demo") { showsDemo = true }.font(.callout)
@@ -361,8 +359,9 @@ public struct WorkspaceRootView: View {
         if !readOnly {
           Button("Import", systemImage: "doc.badge.plus") {
             referencePartID = nil
-            importingDocuments = true
-          }.disabled(store.submission == nil || store.isBusy)
+            importIsArchive = false
+            showsImporter = true
+          }.disabled(store.submission == nil || store.isBusy || store.isExporting)
           Button {
             Task { await store.undoMark() }
           } label: {
@@ -426,8 +425,10 @@ public struct WorkspaceRootView: View {
               }
             },
             onImportReference: { partID in
+              guard !access.isLocked else { return }
               referencePartID = partID
-              importingDocuments = true
+              importIsArchive = false
+              showsImporter = true
             })
         case .ocr:
           VStack {
@@ -447,7 +448,7 @@ public struct WorkspaceRootView: View {
               HStack {
                 Button(store.isRecognizing ? "Cancel recognition" : "Recognize text") {
                   if store.isRecognizing { store.cancelRecognition() } else { store.recognize() }
-                }.disabled(store.inputs.isEmpty || store.isBusy)
+                }.disabled(store.inputs.isEmpty || store.isBusy || store.isExporting)
                 if store.isRecognizing { ProgressView().controlSize(.small) }
               }.padding(8)
             }
@@ -531,12 +532,12 @@ public struct WorkspaceRootView: View {
         workspaces: store.summaries, activeContainerID: store.workspace?.containerID,
         isBusy: store.isBusy, statusMessage: store.errorMessage ?? store.notice,
         onExport: { containerID in
+          pendingPresentation = .archive(containerID)
           sheet = nil
-          Task { await prepareArchive(containerID: containerID) }
         },
         onImport: {
+          pendingPresentation = .importArchive
           sheet = nil
-          importingArchive = true
         },
         onActivate: { id in
           sheet = nil
@@ -553,15 +554,8 @@ public struct WorkspaceRootView: View {
         if let assignment = store.assignment {
           GradeExportPanel(assignment: assignment, identities: store.candidateNames) {
             options, snapshot in
+            pendingPresentation = .grades(options, snapshot)
             sheet = nil
-            Task {
-              if let directory = await store.prepareGradeExport(
-                options: options, snapshot: snapshot)
-              {
-                exportFolder = WorkspaceExportFolder(directory: directory)
-                showsGradeExporter = true
-              }
-            }
           }
         }
         Divider()
@@ -571,23 +565,67 @@ public struct WorkspaceRootView: View {
             "Includes original documents, identity mappings, drafts, grades and history. This is not an anonymous copy."
           ).font(.caption).foregroundStyle(.secondary)
           Button("Create workspace archive") {
+            pendingPresentation = .archive(nil)
             sheet = nil
-            Task { await prepareArchive() }
           }.disabled(store.workspace == nil || store.isBusy)
         }.padding()
       }.frame(idealWidth: 560)
 
     }
   }
+  private func presentPendingAction() {
+    guard !access.isLocked, let pending = pendingPresentation else { return }
+    pendingPresentation = nil
+    switch pending {
+    case .importArchive:
+      importIsArchive = true
+      showsImporter = true
+    case .archive(let containerID):
+      Task { await prepareArchive(containerID: containerID) }
+    case .grades(let options, let snapshot):
+      Task {
+        if let directory = await store.prepareGradeExport(options: options, snapshot: snapshot) {
+          guard !access.isLocked else {
+            try? FileManager.default.removeItem(at: directory)
+            store.isExporting = false
+            return
+          }
+          exportDocument = WorkspaceExportDocument(url: directory, isArchive: false)
+          showsExporter = true
+        }
+      }
+    }
+  }
   private func prepareArchive(containerID: UUID? = nil) async {
     let url = FileManager.default.temporaryDirectory.appendingPathComponent(
       "\(UUID().uuidString).gradingworkspace")
     await store.exportArchive(containerID: containerID, to: url)
-    if FileManager.default.fileExists(atPath: url.path), store.errorMessage == nil {
-      archiveFile = WorkspaceArchiveFile(url: url)
-      showsArchiveExporter = true
+    if FileManager.default.fileExists(atPath: url.path), store.errorMessage == nil, !access.isLocked
+    {
+      exportDocument = WorkspaceExportDocument(url: url, isArchive: true)
+      store.isExporting = true
+      showsExporter = true
+    } else {
+      try? FileManager.default.removeItem(at: url)
     }
   }
+  private func cleanupExport() {
+    store.isExporting = false
+    if let url = exportDocument?.url { try? FileManager.default.removeItem(at: url) }
+    exportDocument = nil
+  }
+  private func reportFileError(_ error: Error) {
+    let native = error as NSError
+    guard !(error is CancellationError),
+      !(native.domain == NSCocoaErrorDomain && native.code == NSUserCancelledError)
+    else { return }
+    store.errorMessage = error.localizedDescription
+  }
+}
+private enum PendingPresentation {
+  case importArchive
+  case archive(UUID?)
+  case grades(GradeExportOptions, GradeExportSnapshot)
 }
 private enum InspectorPanel: String, CaseIterable, Identifiable {
   case rubric = "Rubric"

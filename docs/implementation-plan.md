@@ -4,7 +4,7 @@ Implement the user-approved plan: full macOS 14+/iPadOS 17+ workflow, read-only 
 
 ## Team branches
 
-PM foundation and integration changes use PRs to main. Team A Documents, B Grading and C Storage each use an isolated worktree and branch with a PR to main. PM reviews/builds before merging. Each Sol High may use one Luna Max child with disjoint UI files, no deeper delegation. Sol may commit/push its own branch and open its PR; Luna cannot mutate Git. No force pushes, history rewrites or destructive cleanup. Existing root documentation changes are preserved.
+PM foundation and integration changes use PRs to main. Team A Documents, B Grading and C Storage each use an isolated worktree and branch with a PR to main. PM reviews/builds before merging. Each Sol High may use one Luna Max child with disjoint UI files, no deeper delegation. PM performs each team branch’s commits, pushes and PR operations; subagents do not mutate Git. No force pushes, history rewrites or destructive cleanup. Existing root documentation changes are preserved.
 
 ## Shared contracts
 

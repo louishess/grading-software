@@ -24,6 +24,7 @@ final class LiveWorkspaceStore {
   private(set) var isImporting = false
   private var importTask: Task<Void, Never>?
   var isExporting = false
+  private var inputContainerID: UUID?
   private var repository: WorkspaceRepository?
   private var ocrTask: Task<Void, Never>?
   private var operationWaiters: [CheckedContinuation<Void, Never>] = []
@@ -563,24 +564,43 @@ final class LiveWorkspaceStore {
       referenceInputs = []
       return
     }
-    inputs = []
-    referenceInputs = []
-    var next: [DocumentInput] = []
-    for record in submission?.documents ?? [] {
-      let url = try await repository.assetURL(record.asset, containerID: workspace.containerID)
-      next.append(DocumentInput(record: record, url: url))
+    let records = submission?.documents ?? []
+    let references = assignment?.references.compactMap(\.document) ?? []
+    // Keep the mounted reader during saves to the same immutable sources. Clear it
+    // immediately on selection changes so a failed load cannot expose prior work.
+    if inputContainerID != workspace.containerID || inputs.map(\.record) != records {
+      inputs = []
     }
-    inputs = next
-    if !next.contains(where: { $0.record.id == documentID }) { documentID = next.first?.record.id }
-    var refs: [DocumentInput] = []
-    for record in assignment?.references.compactMap(\.document) ?? [] {
-      refs.append(
-        DocumentInput(
-          record: record,
-          url: try await repository.assetURL(record.asset, containerID: workspace.containerID)))
+    if inputContainerID != workspace.containerID || referenceInputs.map(\.record) != references {
+      referenceInputs = []
     }
-    referenceInputs = refs
+    do {
+      var next: [DocumentInput] = []
+      for record in records {
+        let url = try await repository.assetURL(record.asset, containerID: workspace.containerID)
+        next.append(DocumentInput(record: record, url: url))
+      }
+      var refs: [DocumentInput] = []
+      for record in references {
+        refs.append(
+          DocumentInput(
+            record: record,
+            url: try await repository.assetURL(record.asset, containerID: workspace.containerID)))
+      }
+      inputs = next
+      referenceInputs = refs
+      inputContainerID = workspace.containerID
+      if !next.contains(where: { $0.record.id == documentID }) {
+        documentID = next.first?.record.id
+      }
+    } catch {
+      inputs = []
+      referenceInputs = []
+      inputContainerID = nil
+      throw error
+    }
   }
+
   private static func sourceOrdered(_ blocks: [TranscriptBlock], documents: [SourceDocumentRecord])
     -> [TranscriptBlock]
   {

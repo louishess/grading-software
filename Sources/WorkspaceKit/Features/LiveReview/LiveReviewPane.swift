@@ -25,6 +25,7 @@ public struct LiveReviewPane: View {
   @State private var actionError: String?
   @State private var isFeedbackDirty = false
   @State private var isRubricEditorPresented = false
+  @State private var pendingReferenceImportPartID: UUID?
 
   public init(
     assignment: WorkAssignment,
@@ -87,13 +88,20 @@ public struct LiveReviewPane: View {
         pendingFeedback = nil
       }
     }
-    .sheet(isPresented: $isRubricEditorPresented) {
+    .sheet(isPresented: $isRubricEditorPresented, onDismiss: presentPendingReferenceImport) {
       LiveRubricEditor(
         assignment: assignment,
         readOnly: readOnly,
         saveError: saveError,
         onAssignmentChange: onAssignmentChange,
-        onImportReference: onImportReference
+        onImportReference: { partID in
+          guard !readOnly else {
+            pendingReferenceImportPartID = nil
+            return
+          }
+          pendingReferenceImportPartID = partID
+          isRubricEditorPresented = false
+        }
       )
     }
   }
@@ -787,6 +795,12 @@ public struct LiveReviewPane: View {
     scoreErrors = [:]
     feedbackError = nil
     isFeedbackDirty = false
+  }
+
+  private func presentPendingReferenceImport() {
+    guard let partID = pendingReferenceImportPartID else { return }
+    pendingReferenceImportPartID = nil
+    onImportReference(partID)
   }
 
   private func reconcileTransientState() {

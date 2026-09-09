@@ -63,6 +63,10 @@ func runWorkflowChecks() async throws {
     "Clear reasoning; check the final units.", submission: &submission, assignment: assignment)
   try GradingEngine.transition(submission: &submission, to: .reviewed, assignment: assignment)
   try GradingEngine.transition(submission: &submission, to: .approved, assignment: assignment)
+  var displayMask = DocumentMark(region: region, kind: .displayMask)
+  displayMask.lineWidth = 0
+  submission.marks.append(displayMask)
+  try require(submission.status == .approved, "Display masks changed the approval state")
   assignment.submissions = [submission]
   workspace.assignments = [assignment]
   workspace.identities = [
@@ -103,7 +107,9 @@ func runWorkflowChecks() async throws {
     }
     try require(pdf.pageCount == 1, "Export changed page count")
     try require(
-      flattened ? page.annotations.isEmpty : page.annotations.count == submission.marks.count,
+      flattened
+        ? page.annotations.isEmpty
+        : page.annotations.count == submission.marks.filter { $0.kind != .displayMask }.count,
       "Export annotation semantics incorrect")
     let inspected = try DocumentInspector.inspect(url: output)
     let exportedRecord = SourceDocumentRecord(

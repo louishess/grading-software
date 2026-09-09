@@ -30,7 +30,8 @@ public enum WorkspaceIntegrity {
         for document in submission.documents { try validate(document) }
         for mark in submission.marks {
           try validate(mark.region, documents: submission.documents)
-          guard mark.lineWidth.isFinite, mark.lineWidth > 0,
+          guard mark.lineWidth.isFinite,
+            mark.kind == .displayMask ? mark.lineWidth >= 0 : mark.lineWidth > 0,
             mark.points.allSatisfy({ $0.x.isFinite && $0.y.isFinite })
           else {
             throw WorkspaceFailure.invalid("An annotation has invalid drawing coordinates.")
