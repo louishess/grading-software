@@ -38,3 +38,10 @@ coverage/
 # Machine-local Codex state; keep shared configuration tracked
 .codex/*
 !.codex/config.toml
+
+# Native app user state and local workspace archives
+xcuserdata/
+*.xcuserstate
+*.gradingworkspace
+*.sqlite-wal
+*.sqlite-shm

@@ -15,6 +15,8 @@ let package = Package(
       resources: [.copy("Resources")]),
     .executableTarget(name: "GradingWorkspace", dependencies: ["WorkspaceKit"]),
     .executableTarget(
+      name: "FunctionalChecks", dependencies: ["WorkspaceKit"], path: "Tests/FunctionalChecks"),
+    .executableTarget(
       name: "WorkspaceChecks", dependencies: ["WorkspaceKit"], path: "Tests/WorkspaceKitTests"
     ),
   ]

@@ -30,12 +30,40 @@ private func storageExpect(
 
 public func runStorageChecks() async throws {
   try archiveTimestampPrecisionBoundaryCheck()
-  try await simultaneousSaveCheck()
-  try await repositoryRevisionAssetAndArchiveChecks()
-  try await stagedAssetRecoveryChecks()
-  try await stagedImportRecoveryCheck()
-  try await archiveWriteFailureCheck()
-  try await localAccessChecks()
+  do {
+    try await simultaneousSaveCheck()
+  } catch {
+    throw labeledStorageFailure("simultaneous save", error)
+  }
+  do {
+    try await repositoryRevisionAssetAndArchiveChecks()
+  } catch {
+    throw labeledStorageFailure("revision, asset, and archive round trip", error)
+  }
+  do {
+    try await stagedAssetRecoveryChecks()
+  } catch {
+    throw labeledStorageFailure("staged asset recovery", error)
+  }
+  do {
+    try await stagedImportRecoveryCheck()
+  } catch {
+    throw labeledStorageFailure("staged import recovery", error)
+  }
+  do {
+    try await archiveWriteFailureCheck()
+  } catch {
+    throw labeledStorageFailure("archive publication failure", error)
+  }
+  do {
+    try await localAccessChecks()
+  } catch {
+    throw labeledStorageFailure("local access lifecycle", error)
+  }
+}
+
+private func labeledStorageFailure(_ label: String, _ error: Error) -> StorageCheckFailure {
+  StorageCheckFailure(description: "\(label): \(error)")
 }
 
 private struct ArchiveTimestampFixture: Codable {
@@ -150,7 +178,8 @@ private func repositoryRevisionAssetAndArchiveChecks() async throws {
   var assignment = WorkAssignment(title: "Synthetic assignment")
   var submission = WorkSubmission(candidateAlias: "Candidate 014")
   submission.documents = [
-    SourceDocumentRecord(originalName: "synthetic.pdf", asset: asset, pages: [])
+    SourceDocumentRecord(
+      originalName: "synthetic.pdf", asset: asset, pages: [storageSyntheticPage()])
   ]
   assignment.submissions = [submission]
   workspace.assignments = [assignment]
@@ -352,7 +381,9 @@ private func archiveWriteFailureCheck() async throws {
     from: sourceURL, typeIdentifier: "public.data", containerID: workspace.containerID)
   var assignment = WorkAssignment(title: "Synthetic")
   var submission = WorkSubmission(candidateAlias: "Candidate 001")
-  submission.documents = [SourceDocumentRecord(originalName: "asset.bin", asset: asset, pages: [])]
+  submission.documents = [
+    SourceDocumentRecord(originalName: "asset.bin", asset: asset, pages: [storageSyntheticPage()])
+  ]
   assignment.submissions = [submission]
   workspace.assignments = [assignment]
   workspace = try await setup.saveWorkspace(workspace, expectedRevision: workspace.revisionID)
@@ -377,7 +408,14 @@ private func archiveWriteFailureCheck() async throws {
   try storageExpect(!controller.isEnabled && !controller.isLocked, "The lock did not default off.")
   try await controller.setEnabled(true)
   try storageExpect(controller.isEnabled && !controller.isLocked, "The lock did not enable.")
-  try await Task.sleep(for: .milliseconds(60))
+  // The relock task and this test resume independently on a busy CI executor.
+  // Wait for the observable outcome with a deadline instead of assuming their
+  // callbacks have run in a particular order after one short sleep.
+  let clock = ContinuousClock()
+  let deadline = clock.now.advanced(by: .seconds(2))
+  while !controller.isLocked && clock.now < deadline {
+    try await Task.sleep(for: .milliseconds(10))
+  }
   try storageExpect(controller.isLocked, "Inactivity did not relock the workspace.")
 
   let restored = LocalAccessController(authenticator: success, preferences: preferences)
@@ -503,4 +541,9 @@ private actor DeferredAuthenticator: DeviceOwnerAuthenticating {
     continuation?.resume(returning: success)
     continuation = nil
   }
+}
+
+private func storageSyntheticPage() -> DocumentPageRecord {
+  let bounds = PageRectangle(x: 0, y: 0, width: 100, height: 100)
+  return DocumentPageRecord(index: 0, mediaBox: bounds, cropBox: bounds)
 }

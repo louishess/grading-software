@@ -1,0 +1,26 @@
+name: Validate local grading workspace
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  mac-and-ios:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+      - name: Mac package and fixture checks
+        run: |
+          swift build
+          swift run WorkspaceChecks
+          if test -f Tests/FunctionalChecks/FunctionalCheckRunner.swift; then swift run FunctionalChecks; fi
+      - name: iOS simulator compile
+        run: xcodebuild -project GradingWorkspace.xcodeproj -scheme GradingWorkspace -destination 'generic/platform=iOS Simulator' -derivedDataPath build/ios CODE_SIGNING_ALLOWED=NO build
+      - name: Whitespace
+        run: git diff --check

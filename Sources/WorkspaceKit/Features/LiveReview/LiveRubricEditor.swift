@@ -7,7 +7,11 @@ import UniformTypeIdentifiers
 /// Each edit receives a new rubric revision; existing reviewed grades return
 /// to draft so they can be checked against the current rubric.
 public struct LiveRubricEditor: View {
+  @Environment(\.dismiss) private var dismiss
+
   public let assignment: WorkAssignment
+  public let readOnly: Bool
+  public let saveError: String?
   public let onAssignmentChange: (WorkAssignment) -> Void
   public let onImportReference: (UUID) -> Void
 
@@ -24,10 +28,14 @@ public struct LiveRubricEditor: View {
 
   public init(
     assignment: WorkAssignment,
+    readOnly: Bool = false,
+    saveError: String? = nil,
     onAssignmentChange: @escaping (WorkAssignment) -> Void,
     onImportReference: @escaping (UUID) -> Void
   ) {
     self.assignment = assignment
+    self.readOnly = readOnly
+    self.saveError = saveError
     self.onAssignmentChange = onAssignmentChange
     self.onImportReference = onImportReference
     _draft = State(initialValue: assignment)
@@ -39,12 +47,18 @@ public struct LiveRubricEditor: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 16) {
         header
-        assignmentDetails
-        validationCard
-        partsCard
-        criteriaCard
-        referencesCard
-        jsonImportCard
+        Group {
+          assignmentDetails
+          validationCard
+          partsCard
+          criteriaCard
+          referencesCard
+          jsonImportCard
+        }
+        .disabled(readOnly)
+        if let saveError {
+          LiveRubricError(text: saveError)
+        }
         if let editMessage {
           Text(editMessage)
             .font(.caption)
@@ -78,6 +92,13 @@ public struct LiveRubricEditor: View {
         Text("Draft workspace")
           .font(.caption.weight(.medium))
           .foregroundStyle(WorkspaceStyle.secondary)
+        Button("Done") {
+          dismiss()
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+        .keyboardShortcut(.cancelAction)
+        .accessibilityLabel("Close rubric editor")
       }
       Text("Define parts, criteria, guidance, and references before reviewing submissions.")
         .font(.caption)
@@ -505,7 +526,6 @@ public struct LiveRubricEditor: View {
       next.criteria.removeAll { $0.partID == id }
       next.references.removeAll { $0.partID == id }
     }
-    editMessage = "Removed the part and its associated criteria and references."
   }
 
   private func addCriterion() {
@@ -595,12 +615,10 @@ public struct LiveRubricEditor: View {
     var next = draft
     mutation(&next)
     next.rubricRevisionID = UUID()
-    draft = next
-    titleDraft = next.title
-    courseDraft = next.course
     importPreview = nil
     importError = nil
     importIssues = []
+    editMessage = nil
     onAssignmentChange(next)
   }
 
@@ -632,14 +650,9 @@ public struct LiveRubricEditor: View {
     var next = draft
     do {
       try RubricEngine.apply(preview, to: &next)
-      draft = next
-      titleDraft = next.title
-      courseDraft = next.course
-      importPreview = nil
       importError = nil
       importIssues = []
-      editMessage =
-        "Rubric changes submitted for saving. Existing reviewed grades return to draft."
+      editMessage = "Rubric changes submitted for saving."
       onAssignmentChange(next)
     } catch {
       importError = error.localizedDescription
@@ -674,6 +687,7 @@ public struct LiveRubricEditor: View {
     importPreview = nil
     importError = nil
     importIssues = []
+    editMessage = nil
   }
 
   private func shortID(_ id: UUID) -> String {
@@ -692,7 +706,6 @@ private struct LiveRubricPartRow: View {
   let onRemove: () -> Void
 
   @State private var title: String
-  @State private var isDirty: Bool
 
   init(
     part: WorkPart,
@@ -713,7 +726,6 @@ private struct LiveRubricPartRow: View {
     self.onMoveDown = onMoveDown
     self.onRemove = onRemove
     _title = State(initialValue: part.title)
-    _isDirty = State(initialValue: false)
   }
 
   var body: some View {
@@ -721,14 +733,12 @@ private struct LiveRubricPartRow: View {
       TextField("Part title", text: $title)
         .textFieldStyle(.roundedBorder)
         .accessibilityLabel("Assignment part title")
-        .onChange(of: title) { _, _ in isDirty = title != part.title }
       Button("Save") {
         onSave(title)
-        isDirty = false
       }
       .buttonStyle(.bordered)
       .controlSize(.small)
-      .disabled(!isDirty)
+      .disabled(title == part.title)
       .accessibilityLabel("Save part title")
       Divider().frame(height: 20)
       Button {
@@ -902,7 +912,6 @@ private struct LiveRubricReferenceRow: View {
 
   @State private var title: String
   @State private var text: String
-  @State private var isDirty: Bool
 
   init(
     reference: ReferenceMaterial,
@@ -914,7 +923,6 @@ private struct LiveRubricReferenceRow: View {
     self.onRemove = onRemove
     _title = State(initialValue: reference.title)
     _text = State(initialValue: reference.text)
-    _isDirty = State(initialValue: false)
   }
 
   var body: some View {
@@ -925,11 +933,10 @@ private struct LiveRubricReferenceRow: View {
           .accessibilityLabel("Reference title")
         Button("Save") {
           onSave(title, text)
-          isDirty = false
         }
         .buttonStyle(.bordered)
         .controlSize(.small)
-        .disabled(!isDirty)
+        .disabled(title == reference.title && text == reference.text)
         Button {
           onRemove()
         } label: {
@@ -949,15 +956,9 @@ private struct LiveRubricReferenceRow: View {
         .font(.caption2)
         .foregroundStyle(WorkspaceStyle.secondary)
     }
-    .onChange(of: title) { _, _ in updateDirty() }
-    .onChange(of: text) { _, _ in updateDirty() }
     .padding(9)
     .background(WorkspaceStyle.inset.opacity(0.6), in: RoundedRectangle(cornerRadius: 8))
     .overlay(RoundedRectangle(cornerRadius: 8).stroke(WorkspaceStyle.border, lineWidth: 1))
-  }
-
-  private func updateDirty() {
-    isDirty = title != reference.title || text != reference.text
   }
 }
 
