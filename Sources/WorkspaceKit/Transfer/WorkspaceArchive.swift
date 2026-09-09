@@ -2,6 +2,12 @@ import CryptoKit
 import Foundation
 import GRDB
 
+@_spi(FunctionalChecks) public enum WorkspaceArchiveTimestampValidation {
+  public static func matches(_ first: Date, _ second: Date) -> Bool {
+    abs(first.timeIntervalSince(second)) < 0.000_001
+  }
+}
+
 extension WorkspaceRepository {
   func exportArchive(containerID: UUID, destination: URL) throws -> URL {
     let database = try database(for: containerID)
@@ -450,7 +456,8 @@ private enum WorkspaceArchive {
         workspace.parentRevisionID == decodedManifest.parentRevisionID,
         workspace.schemaVersion == decodedManifest.domainSchemaVersion,
         workspace.title == decodedManifest.title,
-        workspace.modifiedAt == decodedManifest.modifiedAt
+        WorkspaceArchiveTimestampValidation.matches(
+          workspace.modifiedAt, decodedManifest.modifiedAt)
       else { throw WorkspaceFailure.invalid("The archive snapshot and manifest disagree.") }
 
       let revisionRows = try Row.fetchAll(
@@ -489,7 +496,8 @@ private enum WorkspaceArchive {
           revisionPayload, identities: revisionIdentities)
         guard revisionData.id == workspace.id, revisionData.revisionID == revisionID,
           revisionData.parentRevisionID == parentID,
-          revisionData.modifiedAt == Date(timeIntervalSince1970: row["created_at"])
+          WorkspaceArchiveTimestampValidation.matches(
+            revisionData.modifiedAt, Date(timeIntervalSince1970: row["created_at"]))
         else { throw WorkspaceFailure.invalid("A saved revision is inconsistent.") }
         try WorkspaceValidation.validate(revisionData)
         let createdAt = Date(timeIntervalSince1970: row["created_at"])
@@ -500,7 +508,7 @@ private enum WorkspaceArchive {
             revisionID: revisionID, parentRevisionID: parentID, createdAt: createdAt,
             snapshotSHA256: revisionHash, identitiesSHA256: revisionIdentitiesHash))
       }
-      guard revisionEntries == decodedManifest.revisions,
+      guard revisionEntriesMatch(revisionEntries, decodedManifest.revisions),
         revisions.first(where: { $0.data.revisionID == workspace.revisionID })?.data == workspace
       else { throw WorkspaceFailure.invalid("The archive revision history is incomplete.") }
       try validateLineage(revisions, head: workspace.revisionID)
@@ -660,6 +668,19 @@ private enum WorkspaceArchive {
     }
     guard visited.count == revisions.count else {
       throw WorkspaceFailure.invalid("The archive contains unrelated revision history.")
+    }
+  }
+
+  private static func revisionEntriesMatch(
+    _ first: [RevisionEntry], _ second: [RevisionEntry]
+  ) -> Bool {
+    guard first.count == second.count else { return false }
+    return zip(first, second).allSatisfy { left, right in
+      left.revisionID == right.revisionID
+        && left.parentRevisionID == right.parentRevisionID
+        && WorkspaceArchiveTimestampValidation.matches(left.createdAt, right.createdAt)
+        && left.snapshotSHA256 == right.snapshotSHA256
+        && left.identitiesSHA256 == right.identitiesSHA256
     }
   }
 }

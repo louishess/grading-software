@@ -1,6 +1,6 @@
 import CryptoKit
 import Foundation
-import WorkspaceKit
+@_spi(FunctionalChecks) import WorkspaceKit
 
 private struct StorageCheckFailure: Error, CustomStringConvertible {
   var description: String
@@ -29,12 +29,43 @@ private func storageExpect(
 }
 
 public func runStorageChecks() async throws {
+  try archiveTimestampPrecisionBoundaryCheck()
   try await simultaneousSaveCheck()
   try await repositoryRevisionAssetAndArchiveChecks()
   try await stagedAssetRecoveryChecks()
   try await stagedImportRecoveryCheck()
   try await archiveWriteFailureCheck()
   try await localAccessChecks()
+}
+
+private struct ArchiveTimestampFixture: Codable {
+  var createdAt: Date
+}
+
+private func archiveTimestampPrecisionBoundaryCheck() throws {
+  let original = Date(timeIntervalSinceReferenceDate: 810_614_479.794_058)
+  let encoder = JSONEncoder()
+  encoder.dateEncodingStrategy = .millisecondsSince1970
+  let decoder = JSONDecoder()
+  decoder.dateDecodingStrategy = .millisecondsSince1970
+  let decoded = try decoder.decode(
+    ArchiveTimestampFixture.self,
+    from: encoder.encode(ArchiveTimestampFixture(createdAt: original)))
+
+  try storageExpect(
+    original != decoded.createdAt,
+    "The archive timestamp fixture did not exercise a nonzero codec precision delta.")
+  try storageExpect(
+    WorkspaceArchiveTimestampValidation.matches(original, decoded.createdAt),
+    "An archive timestamp changed within codec precision but was rejected.")
+  try storageExpect(
+    WorkspaceArchiveTimestampValidation.matches(
+      original, original.addingTimeInterval(0.000_000_9)),
+    "A revision timestamp less than one microsecond apart was rejected.")
+  try storageExpect(
+    !WorkspaceArchiveTimestampValidation.matches(
+      original, original.addingTimeInterval(0.000_001_1)),
+    "A revision timestamp outside the one-microsecond bound was accepted.")
 }
 
 private enum SaveRaceOutcome: Sendable {
