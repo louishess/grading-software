@@ -21,6 +21,8 @@ final class LiveWorkspaceStore {
   var ocrLanguages: [String] = ["en-US"]
   var supportedOCRLanguages: [String] = []
   var isRecognizing = false
+  private(set) var isImporting = false
+  private var importTask: Task<Void, Never>?
   var isExporting = false
   private var repository: WorkspaceRepository?
   private var ocrTask: Task<Void, Never>?
@@ -134,10 +136,6 @@ final class LiveWorkspaceStore {
       guard let index = data.assignments.firstIndex(where: { $0.id == updated.id }),
         data.assignments[index].rubricRevisionID == expectedRubricRevision
       else { throw WorkspaceFailure.staleRevision }
-      let validation = RubricEngine.validateRubric(updated)
-      guard validation.isValid else {
-        throw WorkspaceFailure.invalid(validation.issues.first?.message ?? "Invalid rubric.")
-      }
       var value = updated
       value.submissions = data.assignments[index].submissions
       value.rubricRevisionID = UUID()
@@ -165,27 +163,49 @@ final class LiveWorkspaceStore {
     }
   }
 
+  func beginImportDocuments(_ urls: [URL], referencePartID: UUID? = nil) {
+    guard !isImporting else { return }
+    isImporting = true
+    importTask = Task {
+      defer {
+        isImporting = false
+        importTask = nil
+      }
+      await importDocuments(urls, referencePartID: referencePartID)
+    }
+  }
+  func cancelImport() { importTask?.cancel() }
+
   func importDocuments(_ urls: [URL], referencePartID: UUID? = nil) async {
     guard !isExporting, let repository, let base = workspace, let assignmentID else { return }
     let selectedSubmissionID = submissionID
     await operation("Validating and copying documents") {
+      guard !self.isExporting else {
+        throw WorkspaceFailure.unavailable(
+          "Finish or cancel the export before importing documents.")
+      }
       // Validate the complete batch before copying any bytes into the workspace.
       for url in urls {
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-        _ = try DocumentInspector.inspect(url: url)
+        _ = try await Self.inspectDocument(url)
       }
       var imported: [SourceDocumentRecord] = []
       for url in urls {
         try Task.checkCancellation()
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-        let inspection = try DocumentInspector.inspect(url: url)
+        let inspection = try await Self.inspectDocument(url)
         let asset = try await repository.storeAsset(
           from: url, typeIdentifier: inspection.typeIdentifier, containerID: base.containerID)
+        let copiedURL = try await repository.assetURL(asset, containerID: base.containerID)
+        let copiedInspection = try await Self.inspectDocument(copiedURL)
+        guard copiedInspection.typeIdentifier == inspection.typeIdentifier else {
+          throw WorkspaceFailure.invalid("A source file changed during import. Select it again.")
+        }
         imported.append(
           SourceDocumentRecord(
-            originalName: url.lastPathComponent, asset: asset, pages: inspection.pages))
+            originalName: url.lastPathComponent, asset: asset, pages: copiedInspection.pages))
       }
       var changed = base
       guard let a = changed.assignments.firstIndex(where: { $0.id == assignmentID }) else {
@@ -225,6 +245,7 @@ final class LiveWorkspaceStore {
           rubricRevisionID: changed.assignments[a].rubricRevisionID,
           reason: "Submission document imported")
       }
+      try Task.checkCancellation()
       self.workspace = try await repository.saveWorkspace(
         changed, expectedRevision: base.revisionID)
       try await self.refreshInputs()
@@ -234,18 +255,26 @@ final class LiveWorkspaceStore {
 
   func addMark(_ mark: DocumentMark) async {
     let prior = submission?.marks ?? []
-    await editSubmissionEvidence("Saving annotation") { submission in submission.marks.append(mark)
+    await editSubmissionEvidence("Saving annotation", invalidatesReview: mark.kind != .displayMask)
+    { submission in submission.marks.append(mark)
     }
     if errorMessage == nil { markUndo.append(prior) }
   }
   func removeMark(_ id: UUID) async {
     let prior = submission?.marks ?? []
-    await editSubmissionEvidence("Removing annotation") { $0.marks.removeAll { $0.id == id } }
+    await editSubmissionEvidence(
+      "Removing annotation", invalidatesReview: prior.first { $0.id == id }?.kind != .displayMask
+    ) { $0.marks.removeAll { $0.id == id } }
     if errorMessage == nil { markUndo.append(prior) }
   }
   func undoMark() async {
     guard let previous = markUndo.last else { return }
-    await editSubmissionEvidence("Undoing annotation") { $0.marks = previous }
+    let substantiveChanged =
+      submission?.marks.filter { $0.kind != .displayMask }
+      != previous.filter { $0.kind != .displayMask }
+    await editSubmissionEvidence("Undoing annotation", invalidatesReview: substantiveChanged) {
+      $0.marks = previous
+    }
     if errorMessage == nil { markUndo.removeLast() }
   }
   func addCrop(_ region: PageRegion) async {
@@ -262,8 +291,10 @@ final class LiveWorkspaceStore {
       value.ocr.revisionID = UUID()
     }
   }
-  func saveBlocks(_ blocks: [TranscriptBlock]) async {
-    await editSubmissionEvidence("Saving transcription") { value in
+  func saveBlocks(_ blocks: [TranscriptBlock], expectedReviewRevision: UUID) async {
+    await editSubmissionEvidence(
+      "Saving transcription", expectedReviewRevision: expectedReviewRevision
+    ) { value in
       value.ocr.blocks = blocks
       value.ocr.revisionID = UUID()
     }
@@ -338,7 +369,11 @@ final class LiveWorkspaceStore {
     await operation("Preparing approved exports") {
       guard let assignment = base.assignments.first(where: { $0.id == snapshot.assignmentID })
       else { throw GradeExportFailure.staleSnapshot }
-      try GradeExportEngine.validateCurrent(snapshot, against: assignment)
+      try GradeExportEngine.validateCurrent(
+        snapshot, against: assignment,
+        identities: Dictionary(
+          base.identities.map { ($0.candidateID, $0.displayName) },
+          uniquingKeysWith: { first, _ in first }))
       guard !snapshot.records.isEmpty, !options.formats.isEmpty else {
         throw GradeExportFailure.noApprovedGrades
       }
@@ -384,7 +419,11 @@ final class LiveWorkspaceStore {
         let current = try await repository.loadWorkspace(containerID: base.containerID)
         guard let currentAssignment = current.assignments.first(where: { $0.id == assignment.id })
         else { throw GradeExportFailure.staleSnapshot }
-        try GradeExportEngine.validateCurrent(snapshot, against: currentAssignment)
+        try GradeExportEngine.validateCurrent(
+          snapshot, against: currentAssignment,
+          identities: Dictionary(
+            current.identities.map { ($0.candidateID, $0.displayName) },
+            uniquingKeysWith: { first, _ in first }))
         self.isExporting = true
         output = destination
       } catch {
@@ -395,11 +434,13 @@ final class LiveWorkspaceStore {
     return output
   }
 
-  func exportArchive(to destination: URL) async {
-    guard let repository, let workspace else { return }
+  func exportArchive(containerID: UUID? = nil, to destination: URL) async {
+    guard let repository, let selectedContainer = containerID ?? workspace?.containerID else {
+      return
+    }
     await operation("Creating workspace archive") {
       _ = try await repository.exportWorkspace(
-        containerID: workspace.containerID, destination: destination)
+        containerID: selectedContainer, destination: destination)
       self.notice = "Workspace archive created. It contains originals and identity mappings."
     }
   }
@@ -420,7 +461,7 @@ final class LiveWorkspaceStore {
   }
 
   private func editSubmissionEvidence(
-    _ message: String, expectedReviewRevision: UUID? = nil,
+    _ message: String, expectedReviewRevision: UUID? = nil, invalidatesReview: Bool = true,
     change: (inout WorkSubmission) throws -> Void
   ) async {
     guard let assignmentID, let submissionID else { return }
@@ -434,9 +475,12 @@ final class LiveWorkspaceStore {
         throw WorkspaceFailure.staleRevision
       }
       let revision = data.assignments[a].rubricRevisionID
-      GradingEngine.invalidate(
-        submission: &data.assignments[a].submissions[s], rubricRevisionID: revision, reason: message
-      )
+      if invalidatesReview {
+        GradingEngine.invalidate(
+          submission: &data.assignments[a].submissions[s], rubricRevisionID: revision,
+          reason: message
+        )
+      }
       try change(&data.assignments[a].submissions[s])
     }
   }
@@ -447,6 +491,10 @@ final class LiveWorkspaceStore {
       return
     }
     await operation(message) {
+      guard !self.isExporting else {
+        throw WorkspaceFailure.unavailable(
+          "Finish or cancel the export before editing this workspace.")
+      }
       guard let current = self.workspace else {
         throw WorkspaceFailure.unavailable("Open a workspace first.")
       }
@@ -522,5 +570,19 @@ final class LiveWorkspaceStore {
       return left.region.bounds.x < right.region.bounds.x
     }
   }
-  private func report(_ error: Error) { errorMessage = error.localizedDescription }
+  private nonisolated static func inspectDocument(_ url: URL) async throws -> DocumentInspection {
+    let task = Task.detached { try DocumentInspector.inspect(url: url) }
+    return try await withTaskCancellationHandler {
+      try await task.value
+    } onCancel: {
+      task.cancel()
+    }
+  }
+  private func report(_ error: Error) {
+    if error is CancellationError {
+      notice = "Operation cancelled. Previously saved work was preserved."
+    } else {
+      errorMessage = error.localizedDescription
+    }
+  }
 }

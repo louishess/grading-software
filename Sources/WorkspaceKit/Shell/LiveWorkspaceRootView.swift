@@ -6,8 +6,9 @@ import UniformTypeIdentifiers
 #endif
 
 public struct WorkspaceRootView: View {
-  @State private var store = LiveWorkspaceStore()
+  @State private var store = WorkspaceAccessSession.store
   @State private var access = WorkspaceAccessSession.controller
+  @State private var unlockError: String?
   @Environment(\.scenePhase) private var scenePhase
   @State private var panel: InspectorPanel = .rubric
   @State private var sheet: WorkspaceSheet?
@@ -42,12 +43,13 @@ public struct WorkspaceRootView: View {
           Text("Unlock with this device’s owner authentication.").foregroundStyle(.secondary)
           Button("Unlock") {
             Task {
-              do { try await access.unlock() } catch {
-                store.errorMessage = error.localizedDescription
-              }
+              do {
+                try await access.unlock()
+                unlockError = nil
+              } catch { unlockError = error.localizedDescription }
             }
           }.buttonStyle(.borderedProminent).disabled(access.isAuthenticating)
-          if let error = store.errorMessage { Text(error).font(.caption) }
+          if let error = unlockError { Text(error).font(.caption) }
         }.frame(maxWidth: .infinity, maxHeight: .infinity)
       } else {
         unlockedBody
@@ -59,6 +61,7 @@ public struct WorkspaceRootView: View {
     }
     .onChange(of: access.isLocked) { _, locked in
       if locked {
+        unlockError = nil
         sheet = nil
         showsDemo = false
         showsImportPreview = false
@@ -171,7 +174,7 @@ public struct WorkspaceRootView: View {
         showsImportPreview = false
         pendingURLs = []
         referencePartID = nil
-        Task { await store.importDocuments(urls, referencePartID: part) }
+        store.beginImportDocuments(urls, referencePartID: part)
       }
     }
     .fileExporter(
@@ -236,6 +239,7 @@ public struct WorkspaceRootView: View {
     Menu {
       if !readOnly { Button("New workspace") { sheet = .workspace } }
       Button("Import workspace copy") { importingArchive = true }
+      Button("Workspace copies and backups") { sheet = .transfer }
       Divider()
       ForEach(store.summaries) { item in
         Button("\(item.title) · \(item.containerID.uuidString.prefix(6))") {
@@ -247,7 +251,7 @@ public struct WorkspaceRootView: View {
     } label: {
       Label(store.workspace?.title ?? "Workspaces", systemImage: "folder")
     }
-    .disabled(store.isBusy)
+    .disabled(store.isBusy || store.isExporting)
   }
   private var toolbarActions: some View {
     HStack(spacing: 10) {
@@ -347,7 +351,7 @@ public struct WorkspaceRootView: View {
           }
         }
       }
-    }.disabled(store.isBusy)
+    }.disabled(store.isBusy || store.isExporting)
   }
   private var documentArea: some View {
     VStack(spacing: 0) {
@@ -400,6 +404,7 @@ public struct WorkspaceRootView: View {
         ForEach(InspectorPanel.allCases) { Text($0.rawValue).tag($0) }
       }.pickerStyle(.segmented).padding(10)
       if let assignment = store.assignment {
+        let renderedSubmission = store.submission
         switch panel {
         case .rubric:
           LiveReviewPane(
@@ -412,7 +417,7 @@ public struct WorkspaceRootView: View {
               }
             },
             onSubmissionChange: { updated in
-              let expected = store.submission?.reviewRevisionID
+              let expected = renderedSubmission?.reviewRevisionID
               Task {
                 if let expected {
                   await store.saveSubmission(updated, expectedReviewRevision: expected)
@@ -448,7 +453,11 @@ public struct WorkspaceRootView: View {
             LiveOCRPane(
               blocks: store.submission?.ocr.blocks ?? [], inputs: store.inputs,
               readOnly: readOnly || store.isBusy || store.isExporting, masked: store.masksEnabled,
-              onBlocksChange: { blocks in Task { await store.saveBlocks(blocks) } },
+              onBlocksChange: { blocks in
+                if let expected = renderedSubmission?.reviewRevisionID {
+                  Task { await store.saveBlocks(blocks, expectedReviewRevision: expected) }
+                }
+              },
               onFocus: {
                 store.focus($0)
                 if readOnly { compactTab = 1 }
@@ -487,6 +496,7 @@ public struct WorkspaceRootView: View {
       if store.isBusy {
         ProgressView().controlSize(.small)
         Text(store.busyMessage)
+        if store.isImporting { Button("Cancel import") { store.cancelImport() } }
       } else {
         Image(systemName: "internaldrive")
         Text(store.notice ?? (readOnly ? "Read-only review" : "Local workspace"))
@@ -515,6 +525,23 @@ public struct WorkspaceRootView: View {
     case .privacy:
       PrivacyAccessView(
         accessController: access, masksEnabled: $store.masksEnabled, onDismiss: { sheet = nil })
+    case .transfer:
+      TransferWorkspaceView(
+        workspaces: store.summaries, activeContainerID: store.workspace?.containerID,
+        isBusy: store.isBusy, statusMessage: store.errorMessage ?? store.notice,
+        onExport: { containerID in
+          sheet = nil
+          Task { await prepareArchive(containerID: containerID) }
+        },
+        onImport: {
+          sheet = nil
+          importingArchive = true
+        },
+        onActivate: { id in
+          sheet = nil
+          Task { await store.selectWorkspace(id) }
+        },
+        onDismiss: { sheet = nil })
     case .exports:
       VStack {
         HStack {
@@ -544,19 +571,20 @@ public struct WorkspaceRootView: View {
           ).font(.caption).foregroundStyle(.secondary)
           Button("Create workspace archive") {
             sheet = nil
-            Task {
-              let url = FileManager.default.temporaryDirectory.appendingPathComponent(
-                "\(UUID().uuidString).gradingworkspace")
-              await store.exportArchive(to: url)
-              if FileManager.default.fileExists(atPath: url.path), store.errorMessage == nil {
-                archiveFile = WorkspaceArchiveFile(url: url)
-                showsArchiveExporter = true
-              }
-            }
+            Task { await prepareArchive() }
           }.disabled(store.workspace == nil || store.isBusy)
         }.padding()
       }.frame(idealWidth: 560)
 
+    }
+  }
+  private func prepareArchive(containerID: UUID? = nil) async {
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent(
+      "\(UUID().uuidString).gradingworkspace")
+    await store.exportArchive(containerID: containerID, to: url)
+    if FileManager.default.fileExists(atPath: url.path), store.errorMessage == nil {
+      archiveFile = WorkspaceArchiveFile(url: url)
+      showsArchiveExporter = true
     }
   }
 }
@@ -567,7 +595,7 @@ private enum InspectorPanel: String, CaseIterable, Identifiable {
   var id: Self { self }
 }
 private enum WorkspaceSheet: String, Identifiable {
-  case workspace, assignment, candidate, privacy, exports
+  case workspace, assignment, candidate, privacy, exports, transfer
   var id: Self { self }
 }
 private struct SimpleEntrySheet: View {
@@ -645,4 +673,5 @@ private struct DocumentImportPreview: View {
 
 @MainActor private enum WorkspaceAccessSession {
   static let controller = LocalAccessController()
+  static let store = LiveWorkspaceStore()
 }

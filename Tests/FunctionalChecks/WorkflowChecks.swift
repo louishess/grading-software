@@ -69,6 +69,19 @@ func runWorkflowChecks() async throws {
     CandidateIdentity(candidateID: submission.candidateID, displayName: "Synthetic Student")
   ]
   workspace = try await repository.saveWorkspace(workspace, expectedRevision: workspace.revisionID)
+  try WorkspaceIntegrity.validate(workspace)
+  var invalid = workspace
+  invalid.assignments[0].criteria.append(criterion)
+  do {
+    try WorkspaceIntegrity.validate(invalid)
+    throw WorkflowCheckFailure(description: "Duplicate criterion IDs were accepted")
+  } catch WorkspaceFailure.invalid {}
+  invalid = workspace
+  invalid.assignments[0].submissions[0].marks[0].region.documentRevisionID = UUID()
+  do {
+    try WorkspaceIntegrity.validate(invalid)
+    throw WorkflowCheckFailure(description: "Stale source geometry was accepted")
+  } catch WorkspaceFailure.invalid {}
   let snapshot = try GradeExportEngine.makeSnapshot(assignment: assignment)
   try require(
     snapshot.records.count == 1 && snapshot.records[0].total == PointValue(875),

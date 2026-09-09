@@ -52,7 +52,8 @@ private func repositoryRevisionAssetAndArchiveChecks() async throws {
   var assignment = WorkAssignment(title: "Synthetic assignment")
   var submission = WorkSubmission(candidateAlias: "Candidate 014")
   submission.documents = [
-    SourceDocumentRecord(originalName: "synthetic.pdf", asset: asset, pages: [])
+    SourceDocumentRecord(
+      originalName: "synthetic.pdf", asset: asset, pages: [storageSyntheticPage()])
   ]
   assignment.submissions = [submission]
   workspace.assignments = [assignment]
@@ -254,7 +255,9 @@ private func archiveWriteFailureCheck() async throws {
     from: sourceURL, typeIdentifier: "public.data", containerID: workspace.containerID)
   var assignment = WorkAssignment(title: "Synthetic")
   var submission = WorkSubmission(candidateAlias: "Candidate 001")
-  submission.documents = [SourceDocumentRecord(originalName: "asset.bin", asset: asset, pages: [])]
+  submission.documents = [
+    SourceDocumentRecord(originalName: "asset.bin", asset: asset, pages: [storageSyntheticPage()])
+  ]
   assignment.submissions = [submission]
   workspace.assignments = [assignment]
   workspace = try await setup.saveWorkspace(workspace, expectedRevision: workspace.revisionID)
@@ -405,4 +408,9 @@ private actor DeferredAuthenticator: DeviceOwnerAuthenticating {
     continuation?.resume(returning: success)
     continuation = nil
   }
+}
+
+private func storageSyntheticPage() -> DocumentPageRecord {
+  let bounds = PageRectangle(x: 0, y: 0, width: 100, height: 100)
+  return DocumentPageRecord(index: 0, mediaBox: bounds, cropBox: bounds)
 }

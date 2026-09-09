@@ -36,7 +36,8 @@ enum StorageLayout {
   }
 
   static func isSHA256(_ value: String) -> Bool {
-    value.count == 64 && value.allSatisfy { $0.isHexDigit && !$0.isUppercase }
+    value.utf8.count == 64
+      && value.utf8.allSatisfy { (48...57).contains($0) || (97...102).contains($0) }
   }
 }
 
@@ -185,6 +186,7 @@ extension Digest {
 
 enum WorkspaceValidation {
   static func validate(_ data: WorkspaceData, expectedContainerID: UUID? = nil) throws {
+    try WorkspaceIntegrity.validate(data)
     guard data.schemaVersion == StorageLayout.domainSchemaVersion else {
       throw WorkspaceFailure.invalid("The workspace data version is unsupported.")
     }
@@ -213,7 +215,13 @@ enum WorkspaceValidation {
       }
     }
     var assetsByHash: [String: AssetReference] = [:]
-    for asset in data.assets {
+    let allAssets = data.assignments.flatMap { assignment in
+      assignment.references.compactMap { $0.document?.asset }
+        + assignment.submissions.flatMap { submission in
+          submission.documents.map(\.asset) + submission.ocr.blocks.compactMap(\.cropAsset)
+        }
+    }
+    for asset in allAssets {
       let expectedPath = try StorageLayout.assetRelativePath(sha256: asset.sha256)
       guard asset.byteCount >= 0, asset.byteCount <= StorageLayout.maximumAssetBytes,
         asset.relativePath == expectedPath
