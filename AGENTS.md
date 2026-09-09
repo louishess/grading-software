@@ -1,46 +1,31 @@
 # Repository Guidelines
 
-## Active milestone: presentation-only SwiftUI skeleton
+## Active milestone: local Mac/iPad grading workspace
 
-Build only the approved appearance and sample navigation. The PDF reader and all other supporting software will be selected in a later milestone.
+The user approved the functional implementation plan in docs/implementation-plan.md. Build a fully local manual grading workflow on macOS 14+ and iPadOS 17+, with workspace import and read-only review on iPhone.
 
-- Use synthetic bundled fixtures exclusively. Do not read student directories, request credentials, make network calls, or add analytics.
-- Allowed behavior: sample assignment/submission selection, inspector tabs, panel expansion, appearance selection, and switching precomputed statistics.
-- Render paper-like document previews and static histogram bars with SwiftUI. Do not integrate PDFKit, Swift Charts, WebKit, OCR, authentication, storage, or third-party packages. Do not create PDFs.
-- Do not implement document import/editing, annotations, persistence, rubric scoring/calculation, automatic grading, redaction, authorization, exports, or grade approval.
-- Unimplemented actions must be visibly disabled with a short explanation. Never show fabricated processing, saving, authentication, or redaction success.
-- Keep immutable presentation models separate from views. Do not add speculative service layers, protocols, dependencies, or framework selections.
-- Each subagent may edit only paths named in its assignment. Shared interfaces, fixtures, styling, app entry points, package files, scripts, documentation, and agent configuration belong to the supervisor.
-- Report needed changes outside your ownership to the supervisor; continue independent work within your assigned boundary.
-- Use `gpt-5.6-luna` with `max` reasoning for assigned UI work. Maximum concurrent subagents: three, subject to the runtime cap.
-- Subagents must not spawn agents or delegate further.
-- Subagents must not stage, commit, push, switch branches, reset, clean, or otherwise mutate Git state.
-- Do not overwrite another agent's work or unrelated user changes.
-- Completion reports must identify changed files, validation performed, limitations, and shared-interface requests. Distinguish navigation from placeholders.
-- The supervisor owns integration, final validation, and any separately authorized commits or pushes.
+- Approved: PDFKit, Vision, PencilKit on iPad, AppKit ink on Mac, GRDB/SQLite, Swift Charts, native file APIs and LocalAuthentication.
+- Preserve original documents. Store revisions, annotations, OCR observations/corrections, equation crops, scores and approvals separately. Missing scores are not zero. No generative AI, institutional authentication, automatic synchronization, analytics, or irreversible redaction.
+- Runtime processing stays local. Development dependency downloads and official documentation research are allowed. Use synthetic data exclusively for development/validation; never inspect student folders or request credentials.
+- Never claim a failed save/import/export succeeded. Clearly label display masking as distinct from secure redaction.
+- Keep presentation and domain models separate. Shared models/interfaces, fixtures, styling, shell, app targets, package/project files, scripts, documentation and agent configuration belong to the PM.
 
-## Project structure and commands
+## Multiagent ownership
 
-`Sources/GradingWorkspace` is the app entry point. `Sources/WorkspaceKit` contains the shell, immutable presentation models, synthetic resources, and feature directories. `Tests/WorkspaceKitTests` tests sample selection and fixture integrity. `scripts/` holds local packaging utilities. `docs/product-plan.md` distinguishes this milestone from future work.
+- PM may dispatch up to THREE gpt-5.6-sol agents at high effort. Each may dispatch at most ONE gpt-5.6-luna child at max effort, with no deeper delegation. Six subagents maximum, subject to runtime capacity. Use fewer when sufficient.
+- Explicit model/effort dispatches use fork_turns none with complete task context.
+- Each agent edits only its assigned file allowlist. Parent and child have disjoint writes. Request PM changes to shared files rather than editing them.
+- Each Sol team works in its own PM-created worktree/branch and may commit only its assigned files, push that branch without force, and open a PR to main. Luna may not mutate Git. No agent may merge to main, rewrite history, reset, clean, or alter another team branch. PM reviews and merges validated PRs.
+- PM runs integrated builds/tests; agents may author focused tests and format only owned files.
+- Report changed paths, validation, limitations and shared-interface requests. Preserve unrelated user changes.
+- Preserve .codex/config.toml concurrency 8 and legacy depth 2. Enforce the approved narrower structure through dispatch.
 
-- `swift build` — build.
-- `swift run GradingWorkspace` — run from source.
-- `swift run WorkspaceChecks` — focused tests.
-- `swift build -c release` — optimized executable.
-- `bash scripts/package-app.sh` — local app at `build/Grading Workspace.app`.
-- `xcrun swift-format lint --strict --recursive Sources Tests Package.swift` — Swift format/lint check.
-- `git diff --check` and `git diff --cached --check` — whitespace checks.
+## Development and validation
 
-Use Swift 6 and macOS 14+, descriptive domain names, and two-space Swift indentation. Follow `.editorconfig`; use the toolchain's `swift-format`. Only format files you own.
+Swift 6.1+, macOS 14+, iOS/iPadOS 17+, two-space indentation and swift-format. Commands: swift build; swift run WorkspaceChecks; swift run FunctionalChecks; swift build -c release; bash scripts/package-app.sh; xcrun swift-format lint --strict --recursive Sources Tests Package.swift; git diff --check.
 
-## Validation and data boundaries
+Full Xcode is required for iOS simulator/device validation. Do not equate compilation with physical Pencil, biometric, VoiceOver, Intel, or older-OS acceptance. Report unavailable checks.
 
-Test assignment selection, valid part selection, reference/resource integrity, and consistency of precomputed fixture statistics. There is no grading engine or PDF reader to test. Future work must cover scoring boundaries, rounding, approval transitions, failed imports, and exported values before claiming those features work.
+Test staged-write recovery, original hashes, exact hundredths-point calculations, revision invalidation, archive integrity/conflicts, mixed OCR crops, annotation coordinates and editable/flattened PDF export. Use only synthetic fixtures.
 
-Launch the packaged app; inspect both assignments, every panel, light/dark appearance, minimum window layout, keyboard navigation, and accessibility labels. Report unperformed checks honestly. Keep screenshots synthetic.
-
-Never commit real student submissions, grades, or credentials. Keep local data in ignored directories. Future suggested grades remain drafts until teacher approval; preserve originals and distinguish suggestions from teacher edits.
-
-## Git and review
-
-Use short imperative commit subjects and `codex/` for new feature branches. Follow `.github/pull_request_template.md`, including validation and UI screenshots. Do not commit or push unless separately authorized. Preserve the existing user modification to `.codex/config.toml`; enforce this milestone's stricter delegation cap here and at dispatch.
+The user authorized team branches, commits, pushes and PRs to main for this implementation; PM reviews and merges. Use codex/ for any new branch. Follow .github/pull_request_template.md for separately requested PRs.

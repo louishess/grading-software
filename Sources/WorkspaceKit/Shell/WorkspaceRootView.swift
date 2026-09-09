@@ -97,7 +97,7 @@ public struct WorkspaceRootView: View {
       } label: {
         Image(systemName: "circle.lefthalf.filled").frame(width: 22, height: 22)
       }
-      .menuStyle(.borderlessButton).fixedSize()
+      .fixedSize()
       .accessibilityLabel("Appearance").help("Choose light, dark, or system appearance")
       Button {
         store.showsAccount = true
