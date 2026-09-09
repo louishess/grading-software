@@ -29,12 +29,40 @@ private func storageExpect(
 }
 
 public func runStorageChecks() async throws {
-  try await simultaneousSaveCheck()
-  try await repositoryRevisionAssetAndArchiveChecks()
-  try await stagedAssetRecoveryChecks()
-  try await stagedImportRecoveryCheck()
-  try await archiveWriteFailureCheck()
-  try await localAccessChecks()
+  do {
+    try await simultaneousSaveCheck()
+  } catch {
+    throw labeledStorageFailure("simultaneous save", error)
+  }
+  do {
+    try await repositoryRevisionAssetAndArchiveChecks()
+  } catch {
+    throw labeledStorageFailure("revision, asset, and archive round trip", error)
+  }
+  do {
+    try await stagedAssetRecoveryChecks()
+  } catch {
+    throw labeledStorageFailure("staged asset recovery", error)
+  }
+  do {
+    try await stagedImportRecoveryCheck()
+  } catch {
+    throw labeledStorageFailure("staged import recovery", error)
+  }
+  do {
+    try await archiveWriteFailureCheck()
+  } catch {
+    throw labeledStorageFailure("archive publication failure", error)
+  }
+  do {
+    try await localAccessChecks()
+  } catch {
+    throw labeledStorageFailure("local access lifecycle", error)
+  }
+}
+
+private func labeledStorageFailure(_ label: String, _ error: Error) -> StorageCheckFailure {
+  StorageCheckFailure(description: "\(label): \(error)")
 }
 
 private enum SaveRaceOutcome: Sendable {
