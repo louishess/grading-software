@@ -17,6 +17,13 @@ public struct LiveOCRPane: View {
   private let onFocus: (PageRegion) -> Void
 
   @State private var editableBlocks: [TranscriptBlock]
+  @State private var correctionDrafts: [UUID: String]
+  @State private var pendingCorrectionIDs: Set<UUID> = []
+  @State private var submittedCorrectionValues: [UUID: String] = [:]
+  @State private var cropDrafts: [UUID: LiveCropRegionDraft]
+  @State private var pendingCropIDs: Set<UUID> = []
+  @State private var submittedCropRegions: [UUID: PageRegion] = [:]
+  @State private var cropMessages: [UUID: String] = [:]
 
   public init(
     blocks: [TranscriptBlock],
@@ -33,6 +40,17 @@ public struct LiveOCRPane: View {
     self.onBlocksChange = onBlocksChange
     self.onFocus = onFocus
     _editableBlocks = State(initialValue: blocks)
+    _correctionDrafts = State(
+      initialValue: Dictionary(uniqueKeysWithValues: blocks.map { ($0.id, $0.correction ?? "") })
+    )
+    _cropDrafts = State(
+      initialValue: Dictionary(
+        uniqueKeysWithValues:
+          blocks
+          .filter { $0.kind == .imageCrop }
+          .map { ($0.id, LiveCropRegionDraft(region: $0.region)) }
+      )
+    )
   }
 
   public var body: some View {
@@ -54,7 +72,12 @@ public struct LiveOCRPane: View {
     .background(WorkspaceStyle.background)
     .foregroundStyle(WorkspaceStyle.ink)
     .onChange(of: blocks) { _, newBlocks in
-      editableBlocks = newBlocks
+      acceptAuthoritativeBlocks(newBlocks)
+    }
+    .onChange(of: readOnly) { wasReadOnly, isReadOnly in
+      if wasReadOnly && !isReadOnly {
+        finishPersistenceCycle()
+      }
     }
   }
 
@@ -75,33 +98,6 @@ public struct LiveOCRPane: View {
             .foregroundStyle(.orange)
             .accessibilityHint("Masking hides content in this pane but does not change OCR data.")
         }
-      }
-
-      HStack(spacing: 8) {
-        Button {
-          // Recognition is intentionally owned by the workspace coordinator.
-        } label: {
-          Label("Run recognition", systemImage: "text.viewfinder")
-        }
-        .buttonStyle(.bordered)
-        .controlSize(.small)
-        .disabled(true)
-        .help("Recognition is started by the workspace coordinator.")
-
-        Button {
-          // There is no in-pane recognition task to cancel.
-        } label: {
-          Label("Cancel", systemImage: "xmark")
-        }
-        .buttonStyle(.bordered)
-        .controlSize(.small)
-        .disabled(true)
-        .help("No recognition task is owned by this view.")
-
-        Text("Language and engine settings are controlled by the workspace coordinator.")
-          .font(.caption)
-          .foregroundStyle(WorkspaceStyle.secondary)
-          .lineLimit(2)
       }
 
       if masked {
@@ -157,7 +153,7 @@ public struct LiveOCRPane: View {
     ContentUnavailableView {
       Label("No OCR blocks", systemImage: "text.magnifyingglass")
     } description: {
-      Text("Run recognition from the workspace coordinator, then review each source region here.")
+      Text("OCR blocks will appear here when source text is available for review.")
     }
     .frame(maxWidth: .infinity, minHeight: 220)
     .background(WorkspaceStyle.surface, in: RoundedRectangle(cornerRadius: 12))
@@ -176,12 +172,14 @@ public struct LiveOCRPane: View {
           .background(WorkspaceStyle.accent.opacity(0.12), in: Capsule())
         Spacer(minLength: 4)
         confidenceView(for: block)
+        blockActions(for: block)
       }
 
       HStack(alignment: .top, spacing: 10) {
         VStack(alignment: .leading, spacing: 8) {
           if block.kind == .imageCrop {
             cropPreview(for: block)
+            cropRegionEditor(for: block)
           }
 
           labeledText("Observed", systemImage: "quote.opening") {
@@ -215,20 +213,21 @@ public struct LiveOCRPane: View {
           }
           .buttonStyle(.bordered)
           .controlSize(.small)
+          .disabled(masked)
           .help("Focus the document reader on this source region")
 
-          if shouldSuggestCrop(block) {
+          if block.kind == .text {
             Button {
               convertToImageCrop(block)
             } label: {
-              Label("Convert to image crop", systemImage: "viewfinder.rectangular")
+              Label("Use source image", systemImage: "viewfinder.rectangular")
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
-            .tint(.orange)
+            .tint(shouldSuggestCrop(block) ? .orange : WorkspaceStyle.accent)
             .disabled(editingUnavailable || masked)
             .help(
-              "Replace this low-confidence text block with an image crop and focus its source region"
+              "Replace this text block with an image crop and focus its source region"
             )
           }
         }
@@ -242,6 +241,106 @@ public struct LiveOCRPane: View {
     .accessibilityElement(children: .contain)
   }
 
+  private func blockActions(for block: TranscriptBlock) -> some View {
+    HStack(spacing: 2) {
+      Button {
+        moveBlock(block, by: -1)
+      } label: {
+        Image(systemName: "chevron.up")
+      }
+      .buttonStyle(.borderless)
+      .controlSize(.small)
+      .disabled(editingUnavailable || masked || blockIndex(for: block) == 0)
+      .accessibilityLabel("Move block up")
+      .help("Move this block earlier in the review order")
+
+      Button {
+        moveBlock(block, by: 1)
+      } label: {
+        Image(systemName: "chevron.down")
+      }
+      .buttonStyle(.borderless)
+      .controlSize(.small)
+      .disabled(
+        editingUnavailable || masked || blockIndex(for: block) >= editableBlocks.count - 1
+      )
+      .accessibilityLabel("Move block down")
+      .help("Move this block later in the review order")
+
+      Button(role: .destructive) {
+        removeBlock(block)
+      } label: {
+        Image(systemName: "trash")
+      }
+      .buttonStyle(.borderless)
+      .controlSize(.small)
+      .disabled(editingUnavailable || masked)
+      .accessibilityLabel("Remove block")
+      .help("Remove this OCR block from the review")
+    }
+  }
+
+  @ViewBuilder
+  private func cropRegionEditor(for block: TranscriptBlock) -> some View {
+    VStack(alignment: .leading, spacing: 7) {
+      Text("Crop bounds in canonical page points")
+        .font(.caption.weight(.semibold))
+      Text("x and y use the unrotated page coordinate system.")
+        .font(.caption2)
+        .foregroundStyle(WorkspaceStyle.secondary)
+
+      LazyVGrid(
+        columns: [GridItem(.flexible(minimum: 72)), GridItem(.flexible(minimum: 72))],
+        alignment: .leading,
+        spacing: 7
+      ) {
+        cropField("x", for: block, keyPath: \.x)
+        cropField("y", for: block, keyPath: \.y)
+        cropField("width", for: block, keyPath: \.width)
+        cropField("height", for: block, keyPath: \.height)
+      }
+
+      HStack(spacing: 8) {
+        Button("Apply bounds") {
+          applyCropRegion(for: block)
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+        .disabled(editingUnavailable || masked)
+
+        if pendingCropIDs.contains(block.id) {
+          Text("Saving crop…")
+            .font(.caption2)
+            .foregroundStyle(WorkspaceStyle.secondary)
+        }
+      }
+
+      if let message = cropMessages[block.id] {
+        Text(message)
+          .font(.caption2)
+          .foregroundStyle(WorkspaceStyle.secondary)
+      }
+    }
+    .padding(9)
+    .background(WorkspaceStyle.inset, in: RoundedRectangle(cornerRadius: 8))
+  }
+
+  private func cropField(
+    _ title: String,
+    for block: TranscriptBlock,
+    keyPath: WritableKeyPath<LiveCropRegionDraft, String>
+  ) -> some View {
+    VStack(alignment: .leading, spacing: 3) {
+      Text(title)
+        .font(.caption2.weight(.semibold))
+        .foregroundStyle(WorkspaceStyle.secondary)
+      TextField(title, text: cropBinding(for: block, keyPath: keyPath))
+        .textFieldStyle(.roundedBorder)
+        .font(.caption.monospacedDigit())
+        .accessibilityLabel("Crop \(title) in canonical page points")
+    }
+  }
+
   @ViewBuilder
   private func correctionEditor(for block: TranscriptBlock) -> some View {
     VStack(alignment: .leading, spacing: 6) {
@@ -249,9 +348,11 @@ public struct LiveOCRPane: View {
         Label("Correction", systemImage: "pencil.line")
           .font(.caption.weight(.semibold))
         Spacer()
-        if block.correction != nil && !editingUnavailable {
-          Button("Clear") {
-            updateCorrection(for: block.id, value: nil)
+        if !masked && !editingUnavailable && !correctionDraft(for: block).isEmpty {
+          Button("Clear draft") {
+            correctionDrafts[block.id] = ""
+            pendingCorrectionIDs.remove(block.id)
+            submittedCorrectionValues.removeValue(forKey: block.id)
           }
           .buttonStyle(.borderless)
           .font(.caption)
@@ -274,6 +375,21 @@ public struct LiveOCRPane: View {
           .padding(4)
           .overlay(RoundedRectangle(cornerRadius: 8).stroke(WorkspaceStyle.border, lineWidth: 1))
           .accessibilityLabel("Correction for block \(blockNumber(for: block))")
+        HStack(spacing: 8) {
+          Button("Save correction") {
+            saveCorrection(for: block)
+          }
+          .buttonStyle(.borderedProminent)
+          .controlSize(.small)
+          .tint(WorkspaceStyle.accent)
+          .disabled(!correctionHasChanges(for: block))
+
+          if pendingCorrectionIDs.contains(block.id) {
+            Text("Saving correction…")
+              .font(.caption2)
+              .foregroundStyle(WorkspaceStyle.secondary)
+          }
+        }
       }
 
       if masked {
@@ -281,7 +397,7 @@ public struct LiveOCRPane: View {
           .font(.caption2)
           .foregroundStyle(WorkspaceStyle.secondary)
       } else if !editingUnavailable {
-        Text("Edits are emitted to the workspace as review corrections.")
+        Text("Save a correction explicitly after reviewing the observed text.")
           .font(.caption2)
           .foregroundStyle(WorkspaceStyle.secondary)
       }
@@ -398,6 +514,10 @@ public struct LiveOCRPane: View {
     (editableBlocks.firstIndex(where: { $0.id == block.id }) ?? 0) + 1
   }
 
+  private func blockIndex(for block: TranscriptBlock) -> Int {
+    editableBlocks.firstIndex(where: { $0.id == block.id }) ?? -1
+  }
+
   private func shouldSuggestCrop(_ block: TranscriptBlock) -> Bool {
     guard block.kind == .text else { return false }
     if let confidence = block.confidence, confidence < 0.65 { return true }
@@ -409,17 +529,203 @@ public struct LiveOCRPane: View {
 
   private func correctionBinding(for block: TranscriptBlock) -> Binding<String> {
     Binding(
-      get: { editableBlocks.first(where: { $0.id == block.id })?.correction ?? "" },
-      set: { updateCorrection(for: block.id, value: $0.isEmpty ? nil : $0) }
+      get: { correctionDraft(for: block) },
+      set: {
+        correctionDrafts[block.id] = $0
+        pendingCorrectionIDs.remove(block.id)
+        submittedCorrectionValues.removeValue(forKey: block.id)
+      }
     )
   }
 
-  private func updateCorrection(for id: UUID, value: String?) {
-    guard let index = editableBlocks.firstIndex(where: { $0.id == id }) else { return }
+  private func correctionDraft(for block: TranscriptBlock) -> String {
+    correctionDrafts[block.id] ?? block.correction ?? ""
+  }
+
+  private func correctionHasChanges(for block: TranscriptBlock) -> Bool {
+    normalizedCorrection(correctionDraft(for: block)) != block.correction
+  }
+
+  private func saveCorrection(for block: TranscriptBlock) {
+    guard !editingUnavailable, !masked,
+      let index = editableBlocks.firstIndex(where: { $0.id == block.id })
+    else { return }
+    let value = normalizedCorrection(correctionDraft(for: block))
+    guard value != editableBlocks[index].correction else { return }
     var updated = editableBlocks
     updated[index].correction = value
     editableBlocks = updated
+    correctionDrafts[block.id] = value ?? ""
+    pendingCorrectionIDs.insert(block.id)
+    submittedCorrectionValues[block.id] = value ?? ""
     onBlocksChange(updated)
+  }
+
+  private func normalizedCorrection(_ value: String) -> String? {
+    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    return trimmed.isEmpty ? nil : trimmed
+  }
+
+  private func acceptAuthoritativeBlocks(_ newBlocks: [TranscriptBlock]) {
+    let previousBlocks = Dictionary(uniqueKeysWithValues: editableBlocks.map { ($0.id, $0) })
+    let ids = Set(newBlocks.map(\.id))
+    var nextCorrectionDrafts = correctionDrafts
+    var nextPendingCorrections = pendingCorrectionIDs
+    var nextSubmittedCorrections = submittedCorrectionValues
+    var nextCropDrafts = cropDrafts
+    var nextPendingCrops = pendingCropIDs
+    var nextSubmittedCrops = submittedCropRegions
+    var nextCropMessages = cropMessages
+
+    for block in newBlocks {
+      let previousBlock = previousBlocks[block.id]
+      let correctionDraftWasDirty =
+        previousBlock.map {
+          normalizedCorrection(nextCorrectionDrafts[block.id] ?? $0.correction ?? "")
+            != $0.correction
+        } ?? false
+      if nextPendingCorrections.contains(block.id) {
+        if nextSubmittedCorrections[block.id] == (block.correction ?? "") {
+          nextPendingCorrections.remove(block.id)
+          nextSubmittedCorrections.removeValue(forKey: block.id)
+          nextCorrectionDrafts[block.id] = block.correction ?? ""
+        }
+      } else if !correctionDraftWasDirty {
+        nextCorrectionDrafts[block.id] = block.correction ?? ""
+      }
+
+      if block.kind == .imageCrop {
+        let cropDraftWasDirty =
+          previousBlock.map {
+            nextCropDrafts[block.id] != LiveCropRegionDraft(region: $0.region)
+          } ?? false
+        if nextPendingCrops.contains(block.id), nextSubmittedCrops[block.id] == block.region {
+          nextPendingCrops.remove(block.id)
+          nextSubmittedCrops.removeValue(forKey: block.id)
+          nextCropMessages.removeValue(forKey: block.id)
+        } else if !nextPendingCrops.contains(block.id) && !cropDraftWasDirty {
+          nextCropDrafts[block.id] = LiveCropRegionDraft(region: block.region)
+        }
+      } else {
+        nextCropDrafts.removeValue(forKey: block.id)
+        nextPendingCrops.remove(block.id)
+        nextSubmittedCrops.removeValue(forKey: block.id)
+        nextCropMessages.removeValue(forKey: block.id)
+      }
+    }
+
+    correctionDrafts = nextCorrectionDrafts.filter { ids.contains($0.key) }
+    pendingCorrectionIDs = nextPendingCorrections.intersection(ids)
+    submittedCorrectionValues = nextSubmittedCorrections.filter { ids.contains($0.key) }
+    cropDrafts = nextCropDrafts.filter { ids.contains($0.key) }
+    pendingCropIDs = nextPendingCrops.intersection(ids)
+    submittedCropRegions = nextSubmittedCrops.filter { ids.contains($0.key) }
+    cropMessages = nextCropMessages.filter { ids.contains($0.key) }
+    editableBlocks = newBlocks
+  }
+
+  private func finishPersistenceCycle() {
+    guard !pendingCorrectionIDs.isEmpty || !pendingCropIDs.isEmpty else { return }
+    editableBlocks = blocks
+    pendingCorrectionIDs.removeAll()
+    submittedCorrectionValues.removeAll()
+    for id in pendingCropIDs {
+      cropMessages.removeValue(forKey: id)
+    }
+    pendingCropIDs.removeAll()
+    submittedCropRegions.removeAll()
+  }
+
+  private func moveBlock(_ block: TranscriptBlock, by offset: Int) {
+    guard !editingUnavailable, !masked,
+      let index = editableBlocks.firstIndex(where: { $0.id == block.id })
+    else { return }
+    let destination = index + offset
+    guard editableBlocks.indices.contains(destination) else { return }
+    var updated = editableBlocks
+    updated.swapAt(index, destination)
+    editableBlocks = updated
+    onBlocksChange(updated)
+  }
+
+  private func removeBlock(_ block: TranscriptBlock) {
+    guard !editingUnavailable, !masked,
+      let index = editableBlocks.firstIndex(where: { $0.id == block.id })
+    else { return }
+    var updated = editableBlocks
+    updated.remove(at: index)
+    editableBlocks = updated
+    correctionDrafts.removeValue(forKey: block.id)
+    pendingCorrectionIDs.remove(block.id)
+    submittedCorrectionValues.removeValue(forKey: block.id)
+    cropDrafts.removeValue(forKey: block.id)
+    pendingCropIDs.remove(block.id)
+    submittedCropRegions.removeValue(forKey: block.id)
+    cropMessages.removeValue(forKey: block.id)
+    onBlocksChange(updated)
+  }
+
+  private func cropBinding(
+    for block: TranscriptBlock,
+    keyPath: WritableKeyPath<LiveCropRegionDraft, String>
+  ) -> Binding<String> {
+    Binding(
+      get: {
+        let draft = cropDrafts[block.id] ?? LiveCropRegionDraft(region: block.region)
+        return draft[keyPath: keyPath]
+      },
+      set: { value in
+        var draft = cropDrafts[block.id] ?? LiveCropRegionDraft(region: block.region)
+        draft[keyPath: keyPath] = value
+        cropDrafts[block.id] = draft
+        cropMessages[block.id] = nil
+        pendingCropIDs.remove(block.id)
+        submittedCropRegions.removeValue(forKey: block.id)
+      }
+    )
+  }
+
+  private func applyCropRegion(for block: TranscriptBlock) {
+    guard !editingUnavailable, !masked,
+      let input = sourceInput(for: block.region),
+      let index = editableBlocks.firstIndex(where: { $0.id == block.id })
+    else {
+      cropMessages[block.id] = "The source document for this crop is unavailable."
+      return
+    }
+    let draft = cropDrafts[block.id] ?? LiveCropRegionDraft(region: block.region)
+    guard let x = finiteDouble(draft.x), let y = finiteDouble(draft.y),
+      let width = finiteDouble(draft.width), let height = finiteDouble(draft.height)
+    else {
+      cropMessages[block.id] = "Enter finite numeric bounds."
+      return
+    }
+    let region = PageRegion(
+      documentID: input.record.id,
+      documentRevisionID: input.record.revisionID,
+      pageID: block.region.pageID,
+      bounds: PageRectangle(x: x, y: y, width: width, height: height)
+    )
+    guard (try? DocumentGeometry.validate(region, input: input)) != nil else {
+      cropMessages[block.id] = "Bounds must be positive and inside the page crop box."
+      return
+    }
+
+    var updated = editableBlocks
+    updated[index].region = region
+    editableBlocks = updated
+    cropDrafts[block.id] = LiveCropRegionDraft(region: region)
+    pendingCropIDs.insert(block.id)
+    submittedCropRegions[block.id] = region
+    cropMessages[block.id] = nil
+    onBlocksChange(updated)
+  }
+
+  private func finiteDouble(_ value: String) -> Double? {
+    guard let number = Double(value.trimmingCharacters(in: .whitespacesAndNewlines)),
+      number.isFinite
+    else { return nil }
+    return number
   }
 
   private func convertToImageCrop(_ block: TranscriptBlock) {
@@ -483,6 +789,24 @@ public struct LiveOCRPane: View {
     #else
       return nil
     #endif
+  }
+}
+
+private struct LiveCropRegionDraft: Equatable {
+  var x: String
+  var y: String
+  var width: String
+  var height: String
+
+  init(region: PageRegion) {
+    x = Self.format(region.bounds.x)
+    y = Self.format(region.bounds.y)
+    width = Self.format(region.bounds.width)
+    height = Self.format(region.bounds.height)
+  }
+
+  private static func format(_ value: Double) -> String {
+    String(format: "%.2f", value)
   }
 }
 

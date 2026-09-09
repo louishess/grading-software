@@ -91,9 +91,11 @@ public struct LiveDocumentPane: View {
         VStack(alignment: .leading, spacing: 2) {
           Text(documentTitle)
             .font(.headline)
-          Text(toolbarSubtitle)
-            .font(.caption)
-            .foregroundStyle(WorkspaceStyle.secondary)
+          if let toolbarSubtitle {
+            Text(toolbarSubtitle)
+              .font(.caption)
+              .foregroundStyle(WorkspaceStyle.secondary)
+          }
         }
         Spacer(minLength: 8)
         if masked {
@@ -322,10 +324,10 @@ public struct LiveDocumentPane: View {
     return "Select a document before adding marks or crops."
   }
 
-  private var toolbarSubtitle: String {
+  private var toolbarSubtitle: String? {
     if input == nil { return "Select a source document to begin." }
     if readOnly { return "Review-only source" }
-    return "Coordinates are saved in the source page coordinate system."
+    return nil
   }
 
   private var isPhone: Bool {
@@ -933,9 +935,12 @@ private struct LivePDFReader: View {
         let signature = LiveDocumentInputSignature(input: input)
         if inputSignature != signature {
           provider?.flushAll()
-          document = LivePDFDocumentLoader.load(input: input)
-          view.document = document
-          provider = LiveMacPageOverlayProvider(
+          view.pageOverlayViewProvider = nil
+          view.document = nil
+          document = nil
+          view.isInMarkupMode = true
+          let loadedDocument = LivePDFDocumentLoader.load(input: input)
+          let nextProvider = LiveMacPageOverlayProvider(
             input: input,
             marks: marks,
             masked: masked,
@@ -943,7 +948,10 @@ private struct LivePDFReader: View {
             tool: tool,
             onGesture: onGesture
           )
-          view.pageOverlayViewProvider = provider
+          provider = nextProvider
+          view.pageOverlayViewProvider = nextProvider
+          document = loadedDocument
+          view.document = loadedDocument
           inputSignature = signature
         } else {
           provider?.update(
@@ -955,7 +963,7 @@ private struct LivePDFReader: View {
             onGesture: onGesture
           )
         }
-        view.isInMarkupMode = !readOnly && tool != .pointer
+        view.isInMarkupMode = true
         guard let document, document.pageCount > 0 else { return }
         let boundedPage = min(max(0, pageIndex), document.pageCount - 1)
         if let currentPage = view.currentPage,
@@ -976,8 +984,6 @@ private struct LivePDFReader: View {
           document: document,
           in: view
         )
-        _ = setPageIndex
-        _ = setZoom
       }
 
       func detach(_ view: PDFView) {
@@ -1022,6 +1028,7 @@ private struct LivePDFReader: View {
           ) { [weak self] _ in
             Task { @MainActor [weak self] in
               guard let self, let view = self.view else { return }
+              self.provider?.refreshAll()
               self.setZoom?(Double(view.scaleFactor))
             }
           })
@@ -1088,7 +1095,6 @@ private struct LivePDFReader: View {
       self.readOnly = readOnly
       self.tool = tool
       self.onGesture = onGesture
-      pdfView?.isInMarkupMode = !readOnly && tool != .pointer
       for overlay in overlays.values {
         overlay.update(
           marks: marks,
@@ -1133,6 +1139,13 @@ private struct LivePDFReader: View {
         overlay.flush()
       }
     }
+
+    func refreshAll() {
+      for overlay in overlays.values {
+        overlay.needsLayout = true
+        overlay.needsDisplay = true
+      }
+    }
   }
 
   @MainActor
@@ -1168,6 +1181,7 @@ private struct LivePDFReader: View {
       self.tool = tool
       self.onGesture = onGesture
       super.init(frame: frameRect)
+      autoresizingMask = [.width, .height]
       wantsLayer = true
       layer?.backgroundColor = NSColor.clear.cgColor
     }
@@ -1188,6 +1202,7 @@ private struct LivePDFReader: View {
       self.readOnly = readOnly
       self.tool = tool
       self.onGesture = onGesture
+      needsLayout = true
       needsDisplay = true
     }
 
@@ -1535,9 +1550,12 @@ private struct LivePDFReader: View {
         let signature = LiveDocumentInputSignature(input: input)
         if inputSignature != signature {
           provider?.flushAll()
-          document = LivePDFDocumentLoader.load(input: input)
-          view.document = document
-          provider = LiveIOSPageOverlayProvider(
+          view.pageOverlayViewProvider = nil
+          view.document = nil
+          document = nil
+          view.isInMarkupMode = true
+          let loadedDocument = LivePDFDocumentLoader.load(input: input)
+          let nextProvider = LiveIOSPageOverlayProvider(
             input: input,
             marks: marks,
             masked: masked,
@@ -1545,7 +1563,10 @@ private struct LivePDFReader: View {
             tool: tool,
             onGesture: onGesture
           )
-          view.pageOverlayViewProvider = provider
+          provider = nextProvider
+          view.pageOverlayViewProvider = nextProvider
+          document = loadedDocument
+          view.document = loadedDocument
           inputSignature = signature
         } else {
           provider?.update(
@@ -1557,7 +1578,7 @@ private struct LivePDFReader: View {
             onGesture: onGesture
           )
         }
-        view.isInMarkupMode = !readOnly && tool != .pointer
+        view.isInMarkupMode = true
         guard let document, document.pageCount > 0 else { return }
         let boundedPage = min(max(0, pageIndex), document.pageCount - 1)
         if let currentPage = view.currentPage,
@@ -1621,6 +1642,7 @@ private struct LivePDFReader: View {
           ) { [weak self] _ in
             Task { @MainActor [weak self] in
               guard let view = self?.view else { return }
+              self?.provider?.refreshAll()
               self?.setZoom?(Double(view.scaleFactor))
             }
           })
@@ -1687,7 +1709,6 @@ private struct LivePDFReader: View {
       self.readOnly = readOnly
       self.tool = tool
       self.onGesture = onGesture
-      pdfView?.isInMarkupMode = !readOnly && tool != .pointer
       for overlay in overlays.values {
         overlay.update(
           marks: marks,
@@ -1730,6 +1751,12 @@ private struct LivePDFReader: View {
     func flushAll() {
       for overlay in overlays.values {
         overlay.flush()
+      }
+    }
+
+    func refreshAll() {
+      for overlay in overlays.values {
+        overlay.refreshLayoutAndDisplay()
       }
     }
   }
@@ -1823,6 +1850,13 @@ private struct LivePDFReader: View {
       annotationView.update(marks: marks, masked: masked, tool: tool)
       updateInteraction()
       reloadDrawing()
+      setNeedsLayout()
+      setNeedsDisplay()
+    }
+
+    func refreshLayoutAndDisplay() {
+      setNeedsLayout()
+      annotationView.setNeedsDisplay()
     }
 
     override func layoutSubviews() {
