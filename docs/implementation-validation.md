@@ -73,3 +73,5 @@ Native editable/flattened export images were visually inspected. The original eq
 ## Timestamp precision regression
 
 Final acceptance reproduced an intermittent false archive rejection from comparing decoded JSON milliseconds with SQLite seconds using exact Date equality. Archive timestamp comparisons now require an absolute difference strictly below one microsecond. A deterministic fixture asserts a nonzero codec round-trip delta and verifies both acceptance and rejection boundaries. Revision IDs, parents, hashes, scores and all evidence remain exact. The full five suites passed again after this fix, including a repeat with network access denied.
+
+The CI test also exercises inactivity relocking with a bounded wait for the observable locked state. A fixed 60 ms test sleep was unreliable on the shared CI executor; the production five-minute inactivity duration was not changed.

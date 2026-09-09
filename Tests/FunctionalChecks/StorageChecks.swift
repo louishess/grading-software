@@ -408,7 +408,14 @@ private func archiveWriteFailureCheck() async throws {
   try storageExpect(!controller.isEnabled && !controller.isLocked, "The lock did not default off.")
   try await controller.setEnabled(true)
   try storageExpect(controller.isEnabled && !controller.isLocked, "The lock did not enable.")
-  try await Task.sleep(for: .milliseconds(60))
+  // The relock task and this test resume independently on a busy CI executor.
+  // Wait for the observable outcome with a deadline instead of assuming their
+  // callbacks have run in a particular order after one short sleep.
+  let clock = ContinuousClock()
+  let deadline = clock.now.advanced(by: .seconds(2))
+  while !controller.isLocked && clock.now < deadline {
+    try await Task.sleep(for: .milliseconds(10))
+  }
   try storageExpect(controller.isLocked, "Inactivity did not relock the workspace.")
 
   let restored = LocalAccessController(authenticator: success, preferences: preferences)
