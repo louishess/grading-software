@@ -93,6 +93,9 @@ public struct DocumentMark: Codable, Hashable, Identifiable, Sendable {
   public var colorHex: String = "#E5AD31"
   public var lineWidth: Double = 2
   public var pencilDrawing: Data?
+  public var pencilContentVersion: Int?
+  /// Six affine coefficients a, b, c, d, tx, ty mapping PencilKit canvas to unrotated page space.
+  public var pencilCanvasTransform: [Double]?
   public init(region: PageRegion, kind: MarkKind, text: String = "", points: [PagePoint] = []) {
     self.region = region
     self.kind = kind
