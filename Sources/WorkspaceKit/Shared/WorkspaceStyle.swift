@@ -1,5 +1,10 @@
-import AppKit
 import SwiftUI
+
+#if os(macOS)
+  import AppKit
+#else
+  import UIKit
+#endif
 
 enum WorkspaceStyle {
   static let accent = adaptive(light: 0x137B76, dark: 0x6AD5C5)
@@ -11,15 +16,26 @@ enum WorkspaceStyle {
   static let border = adaptive(light: 0xDCE1E0, dark: 0x3B4652)
 
   private static func adaptive(light: UInt32, dark: UInt32) -> Color {
-    Color(
-      nsColor: NSColor(name: nil) { appearance in
-        let value = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
-        return NSColor(
-          red: CGFloat((value >> 16) & 255) / 255,
-          green: CGFloat((value >> 8) & 255) / 255,
-          blue: CGFloat(value & 255) / 255, alpha: 1
-        )
-      })
+    #if os(macOS)
+      return Color(
+        nsColor: NSColor(name: nil) { appearance in
+          let value = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
+          return NSColor(
+            red: CGFloat((value >> 16) & 255) / 255,
+            green: CGFloat((value >> 8) & 255) / 255,
+            blue: CGFloat(value & 255) / 255, alpha: 1
+          )
+        })
+    #else
+      return Color(
+        uiColor: UIColor { trait in
+          let value = trait.userInterfaceStyle == .dark ? dark : light
+          return UIColor(
+            red: CGFloat((value >> 16) & 255) / 255,
+            green: CGFloat((value >> 8) & 255) / 255,
+            blue: CGFloat(value & 255) / 255, alpha: 1)
+        })
+    #endif
   }
 }
 
