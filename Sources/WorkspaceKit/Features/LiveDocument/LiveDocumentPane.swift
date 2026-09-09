@@ -144,15 +144,19 @@ public struct LiveDocumentPane: View {
       )
       .id(input.record.revisionID)
       .frame(maxWidth: .infinity, maxHeight: .infinity)
+      .accessibilityHidden(masked)
       .overlay(alignment: .topLeading) {
         if masked {
-          Text("Visual masks are display-only")
+          Text("Visual masks active; accessible source hidden")
             .font(.caption2.weight(.medium))
             .foregroundStyle(.white)
             .padding(.horizontal, 8)
             .padding(.vertical, 5)
             .background(.black.opacity(0.72), in: Capsule())
             .padding(10)
+            .accessibilityLabel(
+              "Display masking active. Source document content is hidden from accessibility."
+            )
             .accessibilityHint("Masks are not annotation marks and are excluded from exports.")
         }
       }
@@ -932,6 +936,7 @@ private struct LivePDFReader: View {
         self.view = view
         self.setPageIndex = setPageIndex
         self.setZoom = setZoom
+        view.setAccessibilityHidden(masked)
         let signature = LiveDocumentInputSignature(input: input)
         if inputSignature != signature {
           provider?.flushAll()
@@ -1547,6 +1552,7 @@ private struct LivePDFReader: View {
         self.view = view
         self.setPageIndex = setPageIndex
         self.setZoom = setZoom
+        view.accessibilityElementsHidden = masked
         let signature = LiveDocumentInputSignature(input: input)
         if inputSignature != signature {
           provider?.flushAll()
