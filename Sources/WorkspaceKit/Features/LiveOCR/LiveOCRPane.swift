@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import SwiftUI
 
@@ -218,15 +219,16 @@ public struct LiveOCRPane: View {
 
           if shouldSuggestCrop(block) {
             Button {
-              onFocus(block.region)
+              convertToImageCrop(block)
             } label: {
-              Label("Review crop region", systemImage: "viewfinder.rectangular")
+              Label("Convert to image crop", systemImage: "viewfinder.rectangular")
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
             .tint(.orange)
+            .disabled(editingUnavailable || masked)
             .help(
-              "Focus this low-confidence region so a person can explicitly choose a crop in the reader"
+              "Replace this low-confidence text block with an image crop and focus its source region"
             )
           }
         }
@@ -343,7 +345,7 @@ public struct LiveOCRPane: View {
       .padding(12)
       .frame(maxWidth: .infinity, minHeight: 72)
       .background(Color.black.opacity(0.75), in: RoundedRectangle(cornerRadius: 8))
-    } else if let url = cropURL(for: block), let image = loadImage(from: url) {
+    } else if let image = cropImage(for: block) {
       image
         .resizable()
         .scaledToFit()
@@ -356,7 +358,8 @@ public struct LiveOCRPane: View {
         Image(systemName: "photo.badge.exclamationmark")
         Text(
           block.cropAsset == nil
-            ? "No image crop asset recorded." : "Crop asset unavailable at its recorded path."
+            ? "Source-linked image crop unavailable."
+            : "Crop asset and source-linked fallback unavailable."
         )
         .font(.caption)
       }
@@ -419,14 +422,40 @@ public struct LiveOCRPane: View {
     onBlocksChange(updated)
   }
 
-  private func cropURL(for block: TranscriptBlock) -> URL? {
-    guard let asset = block.cropAsset else { return nil }
-    for input in inputs {
-      let candidate = input.url.deletingLastPathComponent().appendingPathComponent(
-        asset.relativePath)
-      if FileManager.default.fileExists(atPath: candidate.path) { return candidate }
+  private func convertToImageCrop(_ block: TranscriptBlock) {
+    guard !editingUnavailable, !masked,
+      let index = editableBlocks.firstIndex(where: { $0.id == block.id })
+    else { return }
+    var updated = editableBlocks
+    let converted = DocumentOCR.imageCropBlock(from: updated[index])
+    updated[index] = converted
+    editableBlocks = updated
+    onBlocksChange(updated)
+    onFocus(converted.region)
+  }
+
+  private func cropImage(for block: TranscriptBlock) -> Image? {
+    if let url = cropURL(for: block), let image = loadImage(from: url) {
+      return image
     }
-    return nil
+    guard let input = sourceInput(for: block.region),
+      let cgImage = try? DocumentRenderer.image(for: block.region, input: input)
+    else { return nil }
+    return loadImage(from: cgImage)
+  }
+
+  private func sourceInput(for region: PageRegion) -> DocumentInput? {
+    inputs.first {
+      $0.record.id == region.documentID && $0.record.revisionID == region.documentRevisionID
+    }
+  }
+
+  private func cropURL(for block: TranscriptBlock) -> URL? {
+    guard let asset = block.cropAsset, let input = sourceInput(for: block.region) else {
+      return nil
+    }
+    let candidate = input.url.deletingLastPathComponent().appendingPathComponent(asset.relativePath)
+    return FileManager.default.fileExists(atPath: candidate.path) ? candidate : nil
   }
 
   private func loadImage(from url: URL) -> Image? {
@@ -440,6 +469,17 @@ public struct LiveOCRPane: View {
         return Image(uiImage: image)
       }
       return nil
+    #else
+      return nil
+    #endif
+  }
+
+  private func loadImage(from cgImage: CGImage) -> Image? {
+    #if os(macOS)
+      let size = NSSize(width: cgImage.width, height: cgImage.height)
+      return Image(nsImage: NSImage(cgImage: cgImage, size: size))
+    #elseif os(iOS)
+      return Image(uiImage: UIImage(cgImage: cgImage))
     #else
       return nil
     #endif

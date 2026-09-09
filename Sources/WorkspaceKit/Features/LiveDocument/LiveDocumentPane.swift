@@ -815,7 +815,7 @@ private struct LivePDFReader: View {
     let onGesture: LiveDocumentGestureHandler
 
     func makeCoordinator() -> Coordinator {
-      Coordinator()
+      .init()
     }
 
     func makeNSView(context: Context) -> PDFView {
@@ -1246,6 +1246,7 @@ private struct LivePDFReader: View {
           mark.region.documentRevisionID == input.record.revisionID,
           mark.region.pageID == pageRecord?.id
         else { return false }
+        guard masked || mark.kind != .displayMask else { return false }
         return true
       }
     }
@@ -1322,7 +1323,7 @@ private struct LivePDFReader: View {
           width: (trackingPoints.last?.x ?? trackingPoints[0].x) - trackingPoints[0].x,
           height: (trackingPoints.last?.y ?? trackingPoints[0].y) - trackingPoints[0].y
         ).standardized
-        context.setFillColor(NSColor.black.withAlphaComponent(0.85).cgColor)
+        context.setFillColor(NSColor.black.cgColor)
         context.fill(rect)
       case .note, .pointer:
         break
@@ -1417,7 +1418,7 @@ private struct LivePDFReader: View {
     let onGesture: LiveDocumentGestureHandler
 
     func makeCoordinator() -> Coordinator {
-      Coordinator()
+      .init()
     }
 
     func makeUIView(context: Context) -> PDFView {
@@ -1938,14 +1939,7 @@ private struct LivePDFReader: View {
       guard strokes.count > baselineStrokeCount else { return }
       let newStrokes = Array(strokes.dropFirst(baselineStrokeCount))
       let canvasTransform = overlayToPageTransform()
-      let transformCoefficients = [
-        Double(canvasTransform.a),
-        Double(canvasTransform.b),
-        Double(canvasTransform.c),
-        Double(canvasTransform.d),
-        Double(canvasTransform.tx),
-        Double(canvasTransform.ty),
-      ]
+      let transformCoefficients = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]
       for stroke in newStrokes {
         let localDrawing = PKDrawing(strokes: [stroke])
         let canonicalDrawing = localDrawing.transformed(using: canvasTransform)
@@ -1996,6 +1990,7 @@ private struct LivePDFReader: View {
           input.record.pages.first(where: { $0.index == document.index(for: page) })?.id
             == mark.region.pageID
         else { return false }
+        guard masked || mark.kind != .displayMask else { return false }
         return true
       }
     }
@@ -2067,11 +2062,23 @@ private struct LivePDFReader: View {
       guard let context = UIGraphicsGetCurrentContext(), let page else { return }
       for mark in marks {
         guard mark.region.pageID == pageRecordID(for: page),
+          masked || mark.kind != .displayMask,
           mark.kind != .ink || mark.pencilDrawing == nil
         else { continue }
         draw(mark: mark, page: page, in: context)
       }
       guard previewPoints.count > 1 else { return }
+      if tool == .mask {
+        let previewRect = CGRect(
+          x: previewPoints[0].x,
+          y: previewPoints[0].y,
+          width: (previewPoints.last?.x ?? previewPoints[0].x) - previewPoints[0].x,
+          height: (previewPoints.last?.y ?? previewPoints[0].y) - previewPoints[0].y
+        ).standardized
+        context.setFillColor(UIColor.black.cgColor)
+        context.fill(previewRect)
+        return
+      }
       let preview = UIBezierPath()
       preview.move(to: previewPoints[0])
       for point in previewPoints.dropFirst() { preview.addLine(to: point) }
@@ -2147,23 +2154,11 @@ private struct LiveDocumentInputSignature: Equatable {
   }
 }
 
+@MainActor
 private enum LivePDFDocumentLoader {
   static func load(input: DocumentInput) -> PDFDocument? {
-    if let document = PDFDocument(url: input.url), document.pageCount > 0, !document.isEncrypted {
-      return document
-    }
-    #if os(macOS)
-      guard let image = NSImage(contentsOf: input.url), let page = PDFPage(image: image) else {
-        return nil
-      }
-    #elseif os(iOS)
-      guard let image = UIImage(contentsOfFile: input.url.path), let page = PDFPage(image: image)
-      else { return nil }
-    #else
-      return nil
-    #endif
-    let document = PDFDocument()
-    document.insert(page, at: 0)
+    guard let document = try? DocumentPDFKitBridge.document(for: input), document.pageCount > 0
+    else { return nil }
     return document
   }
 }
