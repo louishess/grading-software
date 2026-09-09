@@ -16,11 +16,11 @@ cat > "$app_dir/Contents/Info.plist" <<'PLIST'
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
 <key>CFBundleExecutable</key><string>GradingWorkspace</string>
-<key>CFBundleIdentifier</key><string>local.grading.workspace.preview</string>
+<key>CFBundleIdentifier</key><string>org.local.GradingWorkspace</string>
 <key>CFBundleName</key><string>Grading Workspace</string>
 <key>CFBundleDisplayName</key><string>Grading Workspace</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.1.0</string>
+<key>CFBundleShortVersionString</key><string>0.2.0</string>
 <key>CFBundleVersion</key><string>1</string>
 <key>LSMinimumSystemVersion</key><string>14.0</string>
 <key>NSHighResolutionCapable</key><true/>

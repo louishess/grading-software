@@ -1,6 +1,6 @@
 import SwiftUI
 
-public struct WorkspaceRootView: View {
+public struct DemoWorkspaceRootView: View {
   @State private var store: WorkspaceStore
   private let loadError: Bool
 
