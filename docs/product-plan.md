@@ -1,43 +1,50 @@
-# Product Plan
+# Product plan
 
-## Confirmed direction
+## Current milestone: presentation-only macOS skeleton
 
-Build a grading assistant for a teacher to upload assignments and a rubric, review suggested grades, and export results. The teacher controls final scores and feedback.
+Swift 6 and SwiftUI, macOS 14+, two bundled synthetic assignments, one document-focused workspace. A custom warm-neutral/navy/teal design supports light and dark appearance. Working behaviors are limited to sample assignment/submission selection, inspector navigation, statistics scope selection, pane expansion, and appearance changes.
 
-## Proposed first version
+The latest user instruction explicitly defers the choice of PDF reader and all supporting software. Document pages and histogram bars are SwiftUI presentation. No PDFKit, Swift Charts, OCR engine, storage system, authentication provider, or third-party package is integrated or selected.
 
-Start with one assignment and one rubric per grading batch. Keep the original submission available during review. Show the reason for each suggested criterion score and let the teacher edit it before approving the submission.
+The visual destinations are:
 
-Use explicit states: imported, ready for suggestions, awaiting review, approved, and exported. Missing or unreadable work should remain visibly unresolved; do not assign a zero merely because extraction failed. Export only approved submissions and identify any excluded submissions.
+1. Assignment/submission sidebar and sample review progress.
+2. Paper-like submitted-work preview and planned annotation/feedback tools.
+3. Rubric with criterion descriptions, sample scores, and feedback.
+4. Answer-key and exemplar references, associated with assignment parts.
+5. Manually supplied OCR transcription preview.
+6. Whole-assignment and per-part sample statistics: mean, median, mode, range, population standard deviation, and distribution.
+7. Planned anonymity mode and grader-access layout.
 
-## Milestones
+Disabled controls must not claim processing or success. Sample IDs are not automatic redaction. Sample account screens do not secure access. No data is persisted, approved, exported, or transmitted.
 
-1. **Runnable foundation:** choose the application platform, add local setup commands, and configure formatting, tests, and CI.
-2. **Import and rubric review:** support an agreed initial file format, validate files, preserve originals, and let the teacher correct extracted text and rubric criteria.
-3. **Suggested grading:** integrate an explicitly selected provider, produce criterion-level draft scores and feedback, and handle failures without losing work.
-4. **Teacher review:** support edits and explicit approval; changes to the submission, rubric, or grade invalidate prior approval.
-5. **Export:** generate an agreed format, preserve approved values, and validate the result against synthetic fixtures.
+## Skeleton acceptance
 
-## Decisions to resolve before implementation
+- Build and package a locally launchable app with no third-party dependencies.
+- Select both synthetic assignments, their candidates, inspector tabs, and all statistics scopes.
+- Keep document, rubric, feedback, transcription, and selected candidate consistent.
+- Verify supplied sample scores, totals, metrics, and histogram counts agree through fixture tests.
+- Show every future feature clearly with disabled controls and short explanations.
+- Inspect light/dark appearance, minimum window layout, scrolling, and keyboard/accessibility affordances.
+- Verify the packaged app loads bundled resources independently of the source checkout.
+- Record evidence and unperformed checks in `validation.md`.
 
-- Desktop application or locally hosted browser interface.
-- Assignment types and initial formats: typed text, PDFs, scanned handwriting, or other documents.
-- Rubric format and whether an answer key is also required.
-- Model provider, processing location, and acceptable operating cost.
-- Local storage, backups, retention, and deletion behavior.
-- Required export columns, file format, and destination system.
+## Next decisions — no implementation authorization yet
 
-These are open decisions, not implemented features.
+- Compare PDF reader/editor options for annotations, feedback, document fidelity, licensing, and macOS integration.
+- Evaluate handwriting/OCR software with representative synthetic samples.
+- Define rubric import formats, reference-answer handling, partial-credit rules, and rounding.
+- Determine how grader identity and assignment authorization will be verified.
+- Design identity detection and redaction, including information embedded in document content and metadata.
+- Select storage, backups, retention, deletion behavior, and permitted external processing.
+- Decide whether any automated grading provider is appropriate and define operating cost and review controls.
+- Define statistics inclusion rules for missing, incomplete, draft, and approved results.
+- Select export formats and destinations.
 
-## Acceptance criteria
+## Later workflow requirements
 
-- The teacher can complete one synthetic grading batch from import to export.
-- Original work, rubric criteria, suggested scores, and teacher edits remain distinguishable.
-- Totals and rounding match documented grading rules.
-- Invalid files, failed extraction, and failed model calls are recoverable.
-- Unapproved grades cannot be included in the approved-results export.
-- Student work and credentials never enter source control or routine diagnostic logs.
+Import assignment materials, submissions, and rubric; review their accuracy; inspect any suggested scores and feedback; edit and explicitly approve as the teacher; export only approved results.
 
-## Initial exclusions
+Missing/unreadable work remains unresolved rather than receiving an automatic zero. Edits to submissions, rubric, or grades invalidate previous approval. Preserve original work and distinguish suggested content from teacher edits.
 
-School-system synchronization, automatic grade publication, institutional account management, and multi-teacher collaboration are outside the proposed first version.
+Later tests must cover scoring boundaries, rounding, failed imports/model calls, approval transitions, recoverability, and exported values. None of those workflows is claimed by the visual skeleton. School-system synchronization, automatic grade publication, institutional account administration, and collaboration remain deferred.

@@ -1,33 +1,46 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
+## Active milestone: presentation-only SwiftUI skeleton
 
-This repository is the starting point for a teacher-reviewed grading assistant. `README.md` describes the confirmed workflow and setup status; `docs/product-plan.md` records proposed milestones and open decisions. `.github/` contains the pull request template, and `.codex/config.toml` stores project agent settings. There is no application code, test suite, or asset directory yet. Introduce `src/`, `tests/`, and `assets/` as needed when selecting the stack.
+Build only the approved appearance and sample navigation. The PDF reader and all other supporting software will be selected in a later milestone.
 
-## Build, Test, and Development Commands
+- Use synthetic bundled fixtures exclusively. Do not read student directories, request credentials, make network calls, or add analytics.
+- Allowed behavior: sample assignment/submission selection, inspector tabs, panel expansion, appearance selection, and switching precomputed statistics.
+- Render paper-like document previews and static histogram bars with SwiftUI. Do not integrate PDFKit, Swift Charts, WebKit, OCR, authentication, storage, or third-party packages. Do not create PDFs.
+- Do not implement document import/editing, annotations, persistence, rubric scoring/calculation, automatic grading, redaction, authorization, exports, or grade approval.
+- Unimplemented actions must be visibly disabled with a short explanation. Never show fabricated processing, saving, authentication, or redaction success.
+- Keep immutable presentation models separate from views. Do not add speculative service layers, protocols, dependencies, or framework selections.
+- Each subagent may edit only paths named in its assignment. Shared interfaces, fixtures, styling, app entry points, package files, scripts, documentation, and agent configuration belong to the supervisor.
+- Report needed changes outside your ownership to the supervisor; continue independent work within your assigned boundary.
+- Use `gpt-5.6-luna` with `max` reasoning for assigned UI work. Maximum concurrent subagents: three, subject to the runtime cap.
+- Subagents must not spawn agents or delegate further.
+- Subagents must not stage, commit, push, switch branches, reset, clean, or otherwise mutate Git state.
+- Do not overwrite another agent's work or unrelated user changes.
+- Completion reports must identify changed files, validation performed, limitations, and shared-interface requests. Distinguish navigation from placeholders.
+- The supervisor owns integration, final validation, and any separately authorized commits or pushes.
 
-No application build or development commands exist. Add exact install, run, build, and test commands to `README.md` with the first implementation.
+## Project structure and commands
 
-- `git status --short` — inspect changed and untracked files.
-- `git diff --check` — check unstaged tracked changes for whitespace errors.
-- `git diff --cached --check` — check staged changes, including new files.
+`Sources/GradingWorkspace` is the app entry point. `Sources/WorkspaceKit` contains the shell, immutable presentation models, synthetic resources, and feature directories. `Tests/WorkspaceKitTests` tests sample selection and fixture integrity. `scripts/` holds local packaging utilities. `docs/product-plan.md` distinguishes this milestone from future work.
 
-## Coding Style & Naming Conventions
+- `swift build` — build.
+- `swift run GradingWorkspace` — run from source.
+- `swift run WorkspaceChecks` — focused tests.
+- `swift build -c release` — optimized executable.
+- `bash scripts/package-app.sh` — local app at `build/Grading Workspace.app`.
+- `xcrun swift-format lint --strict --recursive Sources Tests Package.swift` — Swift format/lint check.
+- `git diff --check` and `git diff --cached --check` — whitespace checks.
 
-Follow `.editorconfig`: UTF-8, LF endings, final newlines, spaces, two-space indentation by default, and four spaces for Python. Select a language-appropriate formatter and linter with the initial application code. Use descriptive domain names. Keep scoring rules separate from document parsing, model calls, storage, and UI code.
+Use Swift 6 and macOS 14+, descriptive domain names, and two-space Swift indentation. Follow `.editorconfig`; use the toolchain's `swift-format`. Only format files you own.
 
-## Testing Guidelines
+## Validation and data boundaries
 
-No framework or coverage threshold is configured. Add focused tests with the first implementation, covering rubric validation, score boundaries, rounding, approval transitions, failed imports, and exported values. Use synthetic fixtures and behavior-oriented test names. Add regression tests for calculation and data-loss defects.
+Test assignment selection, valid part selection, reference/resource integrity, and consistency of precomputed fixture statistics. There is no grading engine or PDF reader to test. Future work must cover scoring boundaries, rounding, approval transitions, failed imports, and exported values before claiming those features work.
 
-## Commit & Pull Request Guidelines
+Launch the packaged app; inspect both assignments, every panel, light/dark appearance, minimum window layout, keyboard navigation, and accessibility labels. Report unperformed checks honestly. Keep screenshots synthetic.
 
-Use short imperative subjects, such as `Add rubric validation`. Keep commits focused and use `codex/` for new feature branches. Follow `.github/pull_request_template.md`: explain behavior, link relevant issues, record validation, and attach screenshots for UI changes. Identify checks not run.
+Never commit real student submissions, grades, or credentials. Keep local data in ignored directories. Future suggested grades remain drafts until teacher approval; preserve originals and distinguish suggestions from teacher edits.
 
-## Data & Review Boundaries
+## Git and review
 
-Never commit real student submissions, grades, or credentials. Use ignored local data directories. Treat suggested grades as drafts until teacher approval. Preserve original submissions and distinguish suggestions from teacher edits.
-
-## Agent Instructions
-
-The configured concurrency limit is six subagents, subject to the active runtime's cap. Limit delegation to depth two: the primary agent is depth zero, its children are depth one, and grandchildren are depth two. Depth-two agents must not spawn agents. Codex V2 ignores the legacy `max_depth` setting, so follow this instruction explicitly. Keep final integration, commits, and pushes with the primary agent.
+Use short imperative commit subjects and `codex/` for new feature branches. Follow `.github/pull_request_template.md`, including validation and UI screenshots. Do not commit or push unless separately authorized. Preserve the existing user modification to `.codex/config.toml`; enforce this milestone's stricter delegation cap here and at dispatch.

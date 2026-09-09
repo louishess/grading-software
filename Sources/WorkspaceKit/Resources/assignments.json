@@ -1,0 +1,1054 @@
+[
+  {
+    "id": "math",
+    "title": "Quadratic reasoning",
+    "course": "Algebra II · Problem set",
+    "subtitle": "Show your thinking. Explain what each solution means.",
+    "maximumScore": 15,
+    "parts": [
+      {
+        "id": "math-p1",
+        "title": "Factor and solve",
+        "maximumScore": 5
+      },
+      {
+        "id": "math-p2",
+        "title": "Interpret the graph",
+        "maximumScore": 5
+      },
+      {
+        "id": "math-p3",
+        "title": "Check the solution",
+        "maximumScore": 5
+      }
+    ],
+    "submissions": [
+      {
+        "id": "math-s1",
+        "candidateLabel": "Candidate 001",
+        "status": "Sample draft",
+        "document": {
+          "title": "Quadratic reasoning",
+          "subtitle": "Show your thinking. Explain what each solution means.",
+          "sections": [
+            {
+              "id": "math-p1",
+              "heading": "01  Factor and solve",
+              "prompt": "Solve x² − 5x + 6 = 0 by factoring.",
+              "response": "x² − 5x + 6 = (x − 2)(x − 3).\nSo x = 2 or x = 3."
+            },
+            {
+              "id": "math-p2",
+              "heading": "02  Interpret the graph",
+              "prompt": "For y = x² − 5x + 6, describe the intercepts and vertex.",
+              "response": "The graph crosses the x-axis at 2 and 3.\nIt opens upward. The vertex is halfway between the roots."
+            },
+            {
+              "id": "math-p3",
+              "heading": "03  Check the solution",
+              "prompt": "Substitute both roots into the original equation and explain the result.",
+              "response": "For 2: 4 − 10 + 6 = 0.\nFor 3: 9 − 15 + 6 = 0. Both satisfy the equation."
+            }
+          ]
+        },
+        "exampleScore": 12,
+        "criterionScores": {
+          "math-c1": 5,
+          "math-c2": 3,
+          "math-c3": 4
+        },
+        "feedback": "Your approach is easy to follow. In the next draft, make the check of your result explicit.",
+        "transcription": "01  Factor and solve\nx² − 5x + 6 = (x − 2)(x − 3).\nSo x = 2 or x = 3.\n\n02  Interpret the graph\nThe graph crosses the x-axis at 2 and 3.\nIt opens upward. The vertex is halfway between the roots.\n\n03  Check the solution\nFor 2: 4 − 10 + 6 = 0.\nFor 3: 9 − 15 + 6 = 0. Both satisfy the equation."
+      },
+      {
+        "id": "math-s2",
+        "candidateLabel": "Candidate 002",
+        "status": "Sample draft",
+        "document": {
+          "title": "Quadratic reasoning",
+          "subtitle": "Show your thinking. Explain what each solution means.",
+          "sections": [
+            {
+              "id": "math-p1",
+              "heading": "01  Factor and solve",
+              "prompt": "Solve x² − 5x + 6 = 0 by factoring.",
+              "response": "Two numbers multiply to 6 and add to −5: −2 and −3.\nThe factors are (x − 2)(x − 3); roots are 2 and 3."
+            },
+            {
+              "id": "math-p2",
+              "heading": "02  Interpret the graph",
+              "prompt": "For y = x² − 5x + 6, describe the intercepts and vertex.",
+              "response": "x-intercepts: (2, 0), (3, 0). y-intercept: (0, 6).\nThe axis is x = 2.5; vertex (2.5, −0.25)."
+            },
+            {
+              "id": "math-p3",
+              "heading": "03  Check the solution",
+              "prompt": "Substitute both roots into the original equation and explain the result.",
+              "response": "2² − 5(2) + 6 = 0 and 3² − 5(3) + 6 = 0.\nBoth roots make the product zero."
+            }
+          ]
+        },
+        "exampleScore": 14,
+        "criterionScores": {
+          "math-c1": 5,
+          "math-c2": 5,
+          "math-c3": 4
+        },
+        "feedback": "Your approach is easy to follow. In the next draft, make the check of your result explicit.",
+        "transcription": "01  Factor and solve\nTwo numbers multiply to 6 and add to −5: −2 and −3.\nThe factors are (x − 2)(x − 3); roots are 2 and 3.\n\n02  Interpret the graph\nx-intercepts: (2, 0), (3, 0). y-intercept: (0, 6).\nThe axis is x = 2.5; vertex (2.5, −0.25).\n\n03  Check the solution\n2² − 5(2) + 6 = 0 and 3² − 5(3) + 6 = 0.\nBoth roots make the product zero."
+      },
+      {
+        "id": "math-s3",
+        "candidateLabel": "Candidate 003",
+        "status": "Sample draft",
+        "document": {
+          "title": "Quadratic reasoning",
+          "subtitle": "Show your thinking. Explain what each solution means.",
+          "sections": [
+            {
+              "id": "math-p1",
+              "heading": "01  Factor and solve",
+              "prompt": "Solve x² − 5x + 6 = 0 by factoring.",
+              "response": "I found x = 2 by trying a value.\nI think there is another solution."
+            },
+            {
+              "id": "math-p2",
+              "heading": "02  Interpret the graph",
+              "prompt": "For y = x² − 5x + 6, describe the intercepts and vertex.",
+              "response": "The graph opens up and crosses at x = 2.\nThe minimum is somewhere near x = 2."
+            },
+            {
+              "id": "math-p3",
+              "heading": "03  Check the solution",
+              "prompt": "Substitute both roots into the original equation and explain the result.",
+              "response": "For x = 2, I get 4 − 10 + 6 = 0.\nThis checks one answer."
+            }
+          ]
+        },
+        "exampleScore": 7,
+        "criterionScores": {
+          "math-c1": 2,
+          "math-c2": 2,
+          "math-c3": 3
+        },
+        "feedback": "Your approach is easy to follow. In the next draft, make the check of your result explicit.",
+        "transcription": "01  Factor and solve\nI found x = 2 by trying a value.\nI think there is another solution.\n\n02  Interpret the graph\nThe graph opens up and crosses at x = 2.\nThe minimum is somewhere near x = 2.\n\n03  Check the solution\nFor x = 2, I get 4 − 10 + 6 = 0.\nThis checks one answer."
+      },
+      {
+        "id": "math-s4",
+        "candidateLabel": "Candidate 004",
+        "status": "Sample draft",
+        "document": {
+          "title": "Quadratic reasoning",
+          "subtitle": "Show your thinking. Explain what each solution means.",
+          "sections": [
+            {
+              "id": "math-p1",
+              "heading": "01  Factor and solve",
+              "prompt": "Solve x² − 5x + 6 = 0 by factoring.",
+              "response": "(x − 2)(x − 3) = 0 gives x = 2 and x = 3."
+            },
+            {
+              "id": "math-p2",
+              "heading": "02  Interpret the graph",
+              "prompt": "For y = x² − 5x + 6, describe the intercepts and vertex.",
+              "response": "Intercepts are (2, 0), (3, 0), and (0, 6).\nThe vertex is at x = 2.5."
+            },
+            {
+              "id": "math-p3",
+              "heading": "03  Check the solution",
+              "prompt": "Substitute both roots into the original equation and explain the result.",
+              "response": "At x = 2, the expression equals 0.\nAt x = 3, it also equals 0."
+            }
+          ]
+        },
+        "exampleScore": 12,
+        "criterionScores": {
+          "math-c1": 4,
+          "math-c2": 4,
+          "math-c3": 4
+        },
+        "feedback": "Your approach is easy to follow. In the next draft, make the check of your result explicit.",
+        "transcription": "01  Factor and solve\n(x − 2)(x − 3) = 0 gives x = 2 and x = 3.\n\n02  Interpret the graph\nIntercepts are (2, 0), (3, 0), and (0, 6).\nThe vertex is at x = 2.5.\n\n03  Check the solution\nAt x = 2, the expression equals 0.\nAt x = 3, it also equals 0."
+      },
+      {
+        "id": "math-s5",
+        "candidateLabel": "Candidate 005",
+        "status": "Sample draft",
+        "document": {
+          "title": "Quadratic reasoning",
+          "subtitle": "Show your thinking. Explain what each solution means.",
+          "sections": [
+            {
+              "id": "math-p1",
+              "heading": "01  Factor and solve",
+              "prompt": "Solve x² − 5x + 6 = 0 by factoring.",
+              "response": "The factors are (x − 2)(x − 3).\nEach factor can equal zero: x = 2, x = 3."
+            },
+            {
+              "id": "math-p2",
+              "heading": "02  Interpret the graph",
+              "prompt": "For y = x² − 5x + 6, describe the intercepts and vertex.",
+              "response": "Intercepts: (2, 0), (3, 0), (0, 6).\nVertex: (2.5, −0.25); the parabola opens upward."
+            },
+            {
+              "id": "math-p3",
+              "heading": "03  Check the solution",
+              "prompt": "Substitute both roots into the original equation and explain the result.",
+              "response": "4 − 10 + 6 = 0; 9 − 15 + 6 = 0.\nBoth solutions satisfy the original equation."
+            }
+          ]
+        },
+        "exampleScore": 15,
+        "criterionScores": {
+          "math-c1": 5,
+          "math-c2": 5,
+          "math-c3": 5
+        },
+        "feedback": "Your approach is easy to follow. In the next draft, make the check of your result explicit.",
+        "transcription": "01  Factor and solve\nThe factors are (x − 2)(x − 3).\nEach factor can equal zero: x = 2, x = 3.\n\n02  Interpret the graph\nIntercepts: (2, 0), (3, 0), (0, 6).\nVertex: (2.5, −0.25); the parabola opens upward.\n\n03  Check the solution\n4 − 10 + 6 = 0; 9 − 15 + 6 = 0.\nBoth solutions satisfy the original equation."
+      },
+      {
+        "id": "math-s6",
+        "candidateLabel": "Candidate 006",
+        "status": "Sample draft",
+        "document": {
+          "title": "Quadratic reasoning",
+          "subtitle": "Show your thinking. Explain what each solution means.",
+          "sections": [
+            {
+              "id": "math-p1",
+              "heading": "01  Factor and solve",
+              "prompt": "Solve x² − 5x + 6 = 0 by factoring.",
+              "response": "I factored to (x − 2)(x − 3).\nThe roots are 2 and 3."
+            },
+            {
+              "id": "math-p2",
+              "heading": "02  Interpret the graph",
+              "prompt": "For y = x² − 5x + 6, describe the intercepts and vertex.",
+              "response": "The roots are the x-intercepts.\nThe axis of symmetry is x = 2.5."
+            },
+            {
+              "id": "math-p3",
+              "heading": "03  Check the solution",
+              "prompt": "Substitute both roots into the original equation and explain the result.",
+              "response": "I substituted 2 and got 0.\nThe factored form also gives 3."
+            }
+          ]
+        },
+        "exampleScore": 10,
+        "criterionScores": {
+          "math-c1": 4,
+          "math-c2": 3,
+          "math-c3": 3
+        },
+        "feedback": "Your approach is easy to follow. In the next draft, make the check of your result explicit.",
+        "transcription": "01  Factor and solve\nI factored to (x − 2)(x − 3).\nThe roots are 2 and 3.\n\n02  Interpret the graph\nThe roots are the x-intercepts.\nThe axis of symmetry is x = 2.5.\n\n03  Check the solution\nI substituted 2 and got 0.\nThe factored form also gives 3."
+      }
+    ],
+    "rubric": [
+      {
+        "id": "math-c1",
+        "partID": "math-p1",
+        "title": "Factor and solve",
+        "description": "Use clear reasoning and show each step.",
+        "maximumScore": 5,
+        "performanceDescription": "Full credit: correct method, complete reasoning, and a supported answer."
+      },
+      {
+        "id": "math-c2",
+        "partID": "math-p2",
+        "title": "Interpret the graph",
+        "description": "Use clear reasoning and show each step.",
+        "maximumScore": 5,
+        "performanceDescription": "Full credit: correct method, complete reasoning, and a supported answer."
+      },
+      {
+        "id": "math-c3",
+        "partID": "math-p3",
+        "title": "Check the solution",
+        "description": "Use clear reasoning and show each step.",
+        "maximumScore": 5,
+        "performanceDescription": "Full credit: correct method, complete reasoning, and a supported answer."
+      }
+    ],
+    "answerKey": [
+      {
+        "id": "math-key0",
+        "partID": "math-p1",
+        "title": "Factor and solve",
+        "body": "(x − 2)(x − 3) = 0, so x = 2 or x = 3."
+      },
+      {
+        "id": "math-key1",
+        "partID": "math-p2",
+        "title": "Interpret the graph",
+        "body": "x-intercepts (2, 0), (3, 0); y-intercept (0, 6); vertex (2.5, −0.25)."
+      },
+      {
+        "id": "math-key2",
+        "partID": "math-p3",
+        "title": "Check the solution",
+        "body": "At x = 2: 4 − 10 + 6 = 0. At x = 3: 9 − 15 + 6 = 0."
+      }
+    ],
+    "exemplars": [
+      {
+        "id": "math-ex0",
+        "partID": "math-p1",
+        "title": "Factor and solve",
+        "body": "Name the factor pair, write the product, then use the zero-product property."
+      },
+      {
+        "id": "math-ex1",
+        "partID": "math-p2",
+        "title": "Interpret the graph",
+        "body": "Label both axes, all intercepts, and the minimum. Connect symmetry to the roots."
+      },
+      {
+        "id": "math-ex2",
+        "partID": "math-p3",
+        "title": "Check the solution",
+        "body": "Show both substitutions and state why a zero result verifies each root."
+      }
+    ],
+    "statistics": [
+      {
+        "id": "overall",
+        "title": "Whole assignment",
+        "maximumScore": 15,
+        "scores": [
+          12,
+          14,
+          7,
+          12,
+          15,
+          10
+        ],
+        "mean": 11.666666666666666,
+        "median": 12.0,
+        "modes": [
+          12
+        ],
+        "minimum": 7,
+        "maximum": 15,
+        "range": 8,
+        "populationStandardDeviation": 2.6246692913372702,
+        "bins": [
+          {
+            "id": "0",
+            "label": "0-3",
+            "lowerBound": 0.0,
+            "upperBound": 4.0,
+            "count": 0
+          },
+          {
+            "id": "1",
+            "label": "4-7",
+            "lowerBound": 4.0,
+            "upperBound": 8.0,
+            "count": 1
+          },
+          {
+            "id": "2",
+            "label": "8-11",
+            "lowerBound": 8.0,
+            "upperBound": 12.0,
+            "count": 1
+          },
+          {
+            "id": "3",
+            "label": "12-15",
+            "lowerBound": 12.0,
+            "upperBound": 16.0,
+            "count": 4
+          }
+        ]
+      },
+      {
+        "id": "math-p1",
+        "title": "Factor and solve",
+        "maximumScore": 5,
+        "scores": [
+          5,
+          5,
+          2,
+          4,
+          5,
+          4
+        ],
+        "mean": 4.166666666666667,
+        "median": 4.5,
+        "modes": [
+          5
+        ],
+        "minimum": 2,
+        "maximum": 5,
+        "range": 3,
+        "populationStandardDeviation": 1.0671873729054748,
+        "bins": [
+          {
+            "id": "0",
+            "label": "0-1",
+            "lowerBound": 0.0,
+            "upperBound": 1.5,
+            "count": 0
+          },
+          {
+            "id": "1",
+            "label": "2-2",
+            "lowerBound": 1.5,
+            "upperBound": 3.0,
+            "count": 1
+          },
+          {
+            "id": "2",
+            "label": "3-4",
+            "lowerBound": 3.0,
+            "upperBound": 4.5,
+            "count": 2
+          },
+          {
+            "id": "3",
+            "label": "5-5",
+            "lowerBound": 4.5,
+            "upperBound": 6.0,
+            "count": 3
+          }
+        ]
+      },
+      {
+        "id": "math-p2",
+        "title": "Interpret the graph",
+        "maximumScore": 5,
+        "scores": [
+          3,
+          5,
+          2,
+          4,
+          5,
+          3
+        ],
+        "mean": 3.6666666666666665,
+        "median": 3.5,
+        "modes": [
+          3,
+          5
+        ],
+        "minimum": 2,
+        "maximum": 5,
+        "range": 3,
+        "populationStandardDeviation": 1.1055415967851332,
+        "bins": [
+          {
+            "id": "0",
+            "label": "0-1",
+            "lowerBound": 0.0,
+            "upperBound": 1.5,
+            "count": 0
+          },
+          {
+            "id": "1",
+            "label": "2-2",
+            "lowerBound": 1.5,
+            "upperBound": 3.0,
+            "count": 1
+          },
+          {
+            "id": "2",
+            "label": "3-4",
+            "lowerBound": 3.0,
+            "upperBound": 4.5,
+            "count": 3
+          },
+          {
+            "id": "3",
+            "label": "5-5",
+            "lowerBound": 4.5,
+            "upperBound": 6.0,
+            "count": 2
+          }
+        ]
+      },
+      {
+        "id": "math-p3",
+        "title": "Check the solution",
+        "maximumScore": 5,
+        "scores": [
+          4,
+          4,
+          3,
+          4,
+          5,
+          3
+        ],
+        "mean": 3.8333333333333335,
+        "median": 4.0,
+        "modes": [
+          4
+        ],
+        "minimum": 3,
+        "maximum": 5,
+        "range": 2,
+        "populationStandardDeviation": 0.6871842709362768,
+        "bins": [
+          {
+            "id": "0",
+            "label": "0-1",
+            "lowerBound": 0.0,
+            "upperBound": 1.5,
+            "count": 0
+          },
+          {
+            "id": "1",
+            "label": "2-2",
+            "lowerBound": 1.5,
+            "upperBound": 3.0,
+            "count": 0
+          },
+          {
+            "id": "2",
+            "label": "3-4",
+            "lowerBound": 3.0,
+            "upperBound": 4.5,
+            "count": 5
+          },
+          {
+            "id": "3",
+            "label": "5-5",
+            "lowerBound": 4.5,
+            "upperBound": 6.0,
+            "count": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "writing",
+    "title": "The case for green spaces",
+    "course": "English · Written response",
+    "subtitle": "Make a claim, support it, and respond to another perspective.",
+    "maximumScore": 12,
+    "parts": [
+      {
+        "id": "writing-p1",
+        "title": "Claim and focus",
+        "maximumScore": 4
+      },
+      {
+        "id": "writing-p2",
+        "title": "Evidence and reasoning",
+        "maximumScore": 4
+      },
+      {
+        "id": "writing-p3",
+        "title": "Alternative perspective",
+        "maximumScore": 4
+      }
+    ],
+    "submissions": [
+      {
+        "id": "writing-s1",
+        "candidateLabel": "Candidate 001",
+        "status": "Sample draft",
+        "document": {
+          "title": "The case for green spaces",
+          "subtitle": "Make a claim, support it, and respond to another perspective.",
+          "sections": [
+            {
+              "id": "writing-p1",
+              "heading": "01  Claim and focus",
+              "prompt": "State a clear position on adding green spaces to a city.",
+              "response": "Cities should make room for small public gardens because everyone needs a place to pause."
+            },
+            {
+              "id": "writing-p2",
+              "heading": "02  Evidence and reasoning",
+              "prompt": "Develop your position using an example and explain why it matters.",
+              "response": "A shaded garden gives neighbors a place to meet.\nPeople can spend time outside without having to buy something."
+            },
+            {
+              "id": "writing-p3",
+              "heading": "03  Alternative perspective",
+              "prompt": "Consider a reasonable objection and respond to it.",
+              "response": "Some people want the land used for parking.\nA small garden could share a block with needed parking."
+            }
+          ]
+        },
+        "exampleScore": 10,
+        "criterionScores": {
+          "writing-c1": 4,
+          "writing-c2": 3,
+          "writing-c3": 3
+        },
+        "feedback": "Your position is clear. Connect each example back to the claim and consider an alternative view.",
+        "transcription": "01  Claim and focus\nCities should make room for small public gardens because everyone needs a place to pause.\n\n02  Evidence and reasoning\nA shaded garden gives neighbors a place to meet.\nPeople can spend time outside without having to buy something.\n\n03  Alternative perspective\nSome people want the land used for parking.\nA small garden could share a block with needed parking."
+      },
+      {
+        "id": "writing-s2",
+        "candidateLabel": "Candidate 002",
+        "status": "Sample draft",
+        "document": {
+          "title": "The case for green spaces",
+          "subtitle": "Make a claim, support it, and respond to another perspective.",
+          "sections": [
+            {
+              "id": "writing-p1",
+              "heading": "01  Claim and focus",
+              "prompt": "State a clear position on adding green spaces to a city.",
+              "response": "Public green spaces should be a priority in dense neighborhoods, where private outdoor space is limited."
+            },
+            {
+              "id": "writing-p2",
+              "heading": "02  Evidence and reasoning",
+              "prompt": "Develop your position using an example and explain why it matters.",
+              "response": "A small garden near a bus stop offers shade and seating.\nIts value comes from being part of an everyday route, not a special trip."
+            },
+            {
+              "id": "writing-p3",
+              "heading": "03  Alternative perspective",
+              "prompt": "Consider a reasonable objection and respond to it.",
+              "response": "Land and maintenance cost money. A pilot garden on unused land lets a city test demand before expanding."
+            }
+          ]
+        },
+        "exampleScore": 12,
+        "criterionScores": {
+          "writing-c1": 4,
+          "writing-c2": 4,
+          "writing-c3": 4
+        },
+        "feedback": "Your position is clear. Connect each example back to the claim and consider an alternative view.",
+        "transcription": "01  Claim and focus\nPublic green spaces should be a priority in dense neighborhoods, where private outdoor space is limited.\n\n02  Evidence and reasoning\nA small garden near a bus stop offers shade and seating.\nIts value comes from being part of an everyday route, not a special trip.\n\n03  Alternative perspective\nLand and maintenance cost money. A pilot garden on unused land lets a city test demand before expanding."
+      },
+      {
+        "id": "writing-s3",
+        "candidateLabel": "Candidate 003",
+        "status": "Sample draft",
+        "document": {
+          "title": "The case for green spaces",
+          "subtitle": "Make a claim, support it, and respond to another perspective.",
+          "sections": [
+            {
+              "id": "writing-p1",
+              "heading": "01  Claim and focus",
+              "prompt": "State a clear position on adding green spaces to a city.",
+              "response": "I like parks. They are useful and cities should have them."
+            },
+            {
+              "id": "writing-p2",
+              "heading": "02  Evidence and reasoning",
+              "prompt": "Develop your position using an example and explain why it matters.",
+              "response": "People can play and sit at parks.\nThere are many trees."
+            },
+            {
+              "id": "writing-p3",
+              "heading": "03  Alternative perspective",
+              "prompt": "Consider a reasonable objection and respond to it.",
+              "response": "Some people do not want parks.\nI still think they are good."
+            }
+          ]
+        },
+        "exampleScore": 5,
+        "criterionScores": {
+          "writing-c1": 2,
+          "writing-c2": 2,
+          "writing-c3": 1
+        },
+        "feedback": "Your position is clear. Connect each example back to the claim and consider an alternative view.",
+        "transcription": "01  Claim and focus\nI like parks. They are useful and cities should have them.\n\n02  Evidence and reasoning\nPeople can play and sit at parks.\nThere are many trees.\n\n03  Alternative perspective\nSome people do not want parks.\nI still think they are good."
+      },
+      {
+        "id": "writing-s4",
+        "candidateLabel": "Candidate 004",
+        "status": "Sample draft",
+        "document": {
+          "title": "The case for green spaces",
+          "subtitle": "Make a claim, support it, and respond to another perspective.",
+          "sections": [
+            {
+              "id": "writing-p1",
+              "heading": "01  Claim and focus",
+              "prompt": "State a clear position on adding green spaces to a city.",
+              "response": "A neighborhood park can make city life healthier and more connected."
+            },
+            {
+              "id": "writing-p2",
+              "heading": "02  Evidence and reasoning",
+              "prompt": "Develop your position using an example and explain why it matters.",
+              "response": "A park gives neighbors a place to meet and exercise.\nThis makes it easier to be active close to home."
+            },
+            {
+              "id": "writing-p3",
+              "heading": "03  Alternative perspective",
+              "prompt": "Consider a reasonable objection and respond to it.",
+              "response": "Maintenance costs money, so cities could begin with a small space and a clear care plan."
+            }
+          ]
+        },
+        "exampleScore": 9,
+        "criterionScores": {
+          "writing-c1": 3,
+          "writing-c2": 3,
+          "writing-c3": 3
+        },
+        "feedback": "Your position is clear. Connect each example back to the claim and consider an alternative view.",
+        "transcription": "01  Claim and focus\nA neighborhood park can make city life healthier and more connected.\n\n02  Evidence and reasoning\nA park gives neighbors a place to meet and exercise.\nThis makes it easier to be active close to home.\n\n03  Alternative perspective\nMaintenance costs money, so cities could begin with a small space and a clear care plan."
+      },
+      {
+        "id": "writing-s5",
+        "candidateLabel": "Candidate 005",
+        "status": "Sample draft",
+        "document": {
+          "title": "The case for green spaces",
+          "subtitle": "Make a claim, support it, and respond to another perspective.",
+          "sections": [
+            {
+              "id": "writing-p1",
+              "heading": "01  Claim and focus",
+              "prompt": "State a clear position on adding green spaces to a city.",
+              "response": "Cities should reserve land for accessible public gardens because shared outdoor space serves daily needs."
+            },
+            {
+              "id": "writing-p2",
+              "heading": "02  Evidence and reasoning",
+              "prompt": "Develop your position using an example and explain why it matters.",
+              "response": "A courtyard garden with step-free paths can serve children, older residents, and workers on lunch breaks.\nThat range of uses makes a small area valuable."
+            },
+            {
+              "id": "writing-p3",
+              "heading": "03  Alternative perspective",
+              "prompt": "Consider a reasonable objection and respond to it.",
+              "response": "Housing is also urgent. Cities should add gardens to existing public sites where possible, protecting housing capacity while improving access."
+            }
+          ]
+        },
+        "exampleScore": 12,
+        "criterionScores": {
+          "writing-c1": 4,
+          "writing-c2": 4,
+          "writing-c3": 4
+        },
+        "feedback": "Your position is clear. Connect each example back to the claim and consider an alternative view.",
+        "transcription": "01  Claim and focus\nCities should reserve land for accessible public gardens because shared outdoor space serves daily needs.\n\n02  Evidence and reasoning\nA courtyard garden with step-free paths can serve children, older residents, and workers on lunch breaks.\nThat range of uses makes a small area valuable.\n\n03  Alternative perspective\nHousing is also urgent. Cities should add gardens to existing public sites where possible, protecting housing capacity while improving access."
+      },
+      {
+        "id": "writing-s6",
+        "candidateLabel": "Candidate 006",
+        "status": "Sample draft",
+        "document": {
+          "title": "The case for green spaces",
+          "subtitle": "Make a claim, support it, and respond to another perspective.",
+          "sections": [
+            {
+              "id": "writing-p1",
+              "heading": "01  Claim and focus",
+              "prompt": "State a clear position on adding green spaces to a city.",
+              "response": "Green spaces are important to people who live in apartments."
+            },
+            {
+              "id": "writing-p2",
+              "heading": "02  Evidence and reasoning",
+              "prompt": "Develop your position using an example and explain why it matters.",
+              "response": "Trees provide shade and places to relax.\nIt is nice to have somewhere nearby."
+            },
+            {
+              "id": "writing-p3",
+              "heading": "03  Alternative perspective",
+              "prompt": "Consider a reasonable objection and respond to it.",
+              "response": "A park costs money to build.\nVolunteers could help with some tasks."
+            }
+          ]
+        },
+        "exampleScore": 7,
+        "criterionScores": {
+          "writing-c1": 3,
+          "writing-c2": 2,
+          "writing-c3": 2
+        },
+        "feedback": "Your position is clear. Connect each example back to the claim and consider an alternative view.",
+        "transcription": "01  Claim and focus\nGreen spaces are important to people who live in apartments.\n\n02  Evidence and reasoning\nTrees provide shade and places to relax.\nIt is nice to have somewhere nearby.\n\n03  Alternative perspective\nA park costs money to build.\nVolunteers could help with some tasks."
+      }
+    ],
+    "rubric": [
+      {
+        "id": "writing-c1",
+        "partID": "writing-p1",
+        "title": "Claim and focus",
+        "description": "Develop the idea with precise, purposeful language.",
+        "maximumScore": 4,
+        "performanceDescription": "Strong: focused claim, specific support, and a clear connection to the argument."
+      },
+      {
+        "id": "writing-c2",
+        "partID": "writing-p2",
+        "title": "Evidence and reasoning",
+        "description": "Develop the idea with precise, purposeful language.",
+        "maximumScore": 4,
+        "performanceDescription": "Strong: focused claim, specific support, and a clear connection to the argument."
+      },
+      {
+        "id": "writing-c3",
+        "partID": "writing-p3",
+        "title": "Alternative perspective",
+        "description": "Develop the idea with precise, purposeful language.",
+        "maximumScore": 4,
+        "performanceDescription": "Strong: focused claim, specific support, and a clear connection to the argument."
+      }
+    ],
+    "answerKey": [
+      {
+        "id": "writing-key0",
+        "partID": "writing-p1",
+        "title": "Claim and focus",
+        "body": "Accept a defensible, focused position. There is no single correct stance."
+      },
+      {
+        "id": "writing-key1",
+        "partID": "writing-p2",
+        "title": "Evidence and reasoning",
+        "body": "Look for a concrete example and an explicit link to the claim. Do not infer evidence that is absent."
+      },
+      {
+        "id": "writing-key2",
+        "partID": "writing-p3",
+        "title": "Alternative perspective",
+        "body": "Look for a fair objection and a reasoned response, rather than dismissal."
+      }
+    ],
+    "exemplars": [
+      {
+        "id": "writing-ex0",
+        "partID": "writing-p1",
+        "title": "Claim and focus",
+        "body": "Shared gardens belong close to homes so residents can use them in ordinary daily life."
+      },
+      {
+        "id": "writing-ex1",
+        "partID": "writing-p2",
+        "title": "Evidence and reasoning",
+        "body": "For example, shade and seating near a transit stop turn waiting time into a chance to rest."
+      },
+      {
+        "id": "writing-ex2",
+        "partID": "writing-p3",
+        "title": "Alternative perspective",
+        "body": "Although land is scarce, converting an unused paved corner can improve access without replacing housing."
+      }
+    ],
+    "statistics": [
+      {
+        "id": "overall",
+        "title": "Whole assignment",
+        "maximumScore": 12,
+        "scores": [
+          10,
+          12,
+          5,
+          9,
+          12,
+          7
+        ],
+        "mean": 9.166666666666666,
+        "median": 9.5,
+        "modes": [
+          12
+        ],
+        "minimum": 5,
+        "maximum": 12,
+        "range": 7,
+        "populationStandardDeviation": 2.544056253745625,
+        "bins": [
+          {
+            "id": "0",
+            "label": "0-3",
+            "lowerBound": 0.0,
+            "upperBound": 3.25,
+            "count": 0
+          },
+          {
+            "id": "1",
+            "label": "4-6",
+            "lowerBound": 3.25,
+            "upperBound": 6.5,
+            "count": 1
+          },
+          {
+            "id": "2",
+            "label": "7-9",
+            "lowerBound": 6.5,
+            "upperBound": 9.75,
+            "count": 2
+          },
+          {
+            "id": "3",
+            "label": "10-12",
+            "lowerBound": 9.75,
+            "upperBound": 13.0,
+            "count": 3
+          }
+        ]
+      },
+      {
+        "id": "writing-p1",
+        "title": "Claim and focus",
+        "maximumScore": 4,
+        "scores": [
+          4,
+          4,
+          2,
+          3,
+          4,
+          3
+        ],
+        "mean": 3.3333333333333335,
+        "median": 3.5,
+        "modes": [
+          4
+        ],
+        "minimum": 2,
+        "maximum": 4,
+        "range": 2,
+        "populationStandardDeviation": 0.7453559924999299,
+        "bins": [
+          {
+            "id": "0",
+            "label": "0-1",
+            "lowerBound": 0.0,
+            "upperBound": 1.25,
+            "count": 0
+          },
+          {
+            "id": "1",
+            "label": "2-2",
+            "lowerBound": 1.25,
+            "upperBound": 2.5,
+            "count": 1
+          },
+          {
+            "id": "2",
+            "label": "3-3",
+            "lowerBound": 2.5,
+            "upperBound": 3.75,
+            "count": 2
+          },
+          {
+            "id": "3",
+            "label": "4-4",
+            "lowerBound": 3.75,
+            "upperBound": 5.0,
+            "count": 3
+          }
+        ]
+      },
+      {
+        "id": "writing-p2",
+        "title": "Evidence and reasoning",
+        "maximumScore": 4,
+        "scores": [
+          3,
+          4,
+          2,
+          3,
+          4,
+          2
+        ],
+        "mean": 3,
+        "median": 3.0,
+        "modes": [
+          2,
+          3,
+          4
+        ],
+        "minimum": 2,
+        "maximum": 4,
+        "range": 2,
+        "populationStandardDeviation": 0.816496580927726,
+        "bins": [
+          {
+            "id": "0",
+            "label": "0-1",
+            "lowerBound": 0.0,
+            "upperBound": 1.25,
+            "count": 0
+          },
+          {
+            "id": "1",
+            "label": "2-2",
+            "lowerBound": 1.25,
+            "upperBound": 2.5,
+            "count": 2
+          },
+          {
+            "id": "2",
+            "label": "3-3",
+            "lowerBound": 2.5,
+            "upperBound": 3.75,
+            "count": 2
+          },
+          {
+            "id": "3",
+            "label": "4-4",
+            "lowerBound": 3.75,
+            "upperBound": 5.0,
+            "count": 2
+          }
+        ]
+      },
+      {
+        "id": "writing-p3",
+        "title": "Alternative perspective",
+        "maximumScore": 4,
+        "scores": [
+          3,
+          4,
+          1,
+          3,
+          4,
+          2
+        ],
+        "mean": 2.8333333333333335,
+        "median": 3.0,
+        "modes": [
+          3,
+          4
+        ],
+        "minimum": 1,
+        "maximum": 4,
+        "range": 3,
+        "populationStandardDeviation": 1.0671873729054748,
+        "bins": [
+          {
+            "id": "0",
+            "label": "0-1",
+            "lowerBound": 0.0,
+            "upperBound": 1.25,
+            "count": 1
+          },
+          {
+            "id": "1",
+            "label": "2-2",
+            "lowerBound": 1.25,
+            "upperBound": 2.5,
+            "count": 1
+          },
+          {
+            "id": "2",
+            "label": "3-3",
+            "lowerBound": 2.5,
+            "upperBound": 3.75,
+            "count": 2
+          },
+          {
+            "id": "3",
+            "label": "4-4",
+            "lowerBound": 3.75,
+            "upperBound": 5.0,
+            "count": 2
+          }
+        ]
+      }
+    ]
+  }
+]

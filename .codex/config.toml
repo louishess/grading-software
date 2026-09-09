@@ -1,5 +1,5 @@
 # Project-specific limits. Existing sessions may retain their initial cap.
 [agents]
-max_concurrent_threads_per_session = 6
+max_concurrent_threads_per_session = 8
 # Legacy V1 setting; V2 ignores it. AGENTS.md also limits delegation depth.
 max_depth = 2
