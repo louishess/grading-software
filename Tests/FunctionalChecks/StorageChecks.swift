@@ -29,11 +29,78 @@ private func storageExpect(
 }
 
 public func runStorageChecks() async throws {
+  try await simultaneousSaveCheck()
   try await repositoryRevisionAssetAndArchiveChecks()
   try await stagedAssetRecoveryChecks()
   try await stagedImportRecoveryCheck()
   try await archiveWriteFailureCheck()
   try await localAccessChecks()
+}
+
+private enum SaveRaceOutcome: Sendable {
+  case saved(WorkspaceData)
+  case stale
+  case failed(String)
+}
+
+private func simultaneousSaveCheck() async throws {
+  let testRoot = temporaryDirectory(label: "simultaneous-save")
+  defer { try? FileManager.default.removeItem(at: testRoot) }
+  try FileManager.default.createDirectory(at: testRoot, withIntermediateDirectories: true)
+  let repositoryRoot = testRoot.appendingPathComponent("Repository")
+  let firstRepository = try WorkspaceRepository(rootURL: repositoryRoot)
+  let baseline = try await firstRepository.createWorkspace(title: "Concurrent baseline")
+  let secondRepository = try WorkspaceRepository(rootURL: repositoryRoot)
+  _ = try await secondRepository.loadWorkspace(containerID: baseline.containerID)
+
+  var firstEdit = baseline
+  firstEdit.title = "First concurrent edit"
+  var secondEdit = baseline
+  secondEdit.title = "Second concurrent edit"
+
+  async let firstOutcome = attemptSave(
+    firstEdit, expectedRevision: baseline.revisionID, repository: firstRepository)
+  async let secondOutcome = attemptSave(
+    secondEdit, expectedRevision: baseline.revisionID, repository: secondRepository)
+  let outcomes = await [firstOutcome, secondOutcome]
+  let saved = outcomes.compactMap { outcome -> WorkspaceData? in
+    guard case .saved(let workspace) = outcome else { return nil }
+    return workspace
+  }
+  let staleCount = outcomes.filter {
+    if case .stale = $0 { return true }
+    return false
+  }.count
+  let failures = outcomes.compactMap { outcome -> String? in
+    guard case .failed(let message) = outcome else { return nil }
+    return message
+  }
+  try storageExpect(
+    saved.count == 1 && staleCount == 1 && failures.isEmpty,
+    "Simultaneous saves did not produce exactly one winner and one stale revision: \(failures)")
+
+  let current = try await firstRepository.loadWorkspace(containerID: baseline.containerID)
+  try storageExpect(
+    current.revisionID == saved[0].revisionID
+      && current.parentRevisionID == baseline.revisionID
+      && current.title == saved[0].title,
+    "The simultaneous save lost or replaced the winning revision.")
+}
+
+private func attemptSave(
+  _ workspace: WorkspaceData,
+  expectedRevision: UUID,
+  repository: WorkspaceRepository
+) async -> SaveRaceOutcome {
+  do {
+    return .saved(
+      try await repository.saveWorkspace(workspace, expectedRevision: expectedRevision))
+  } catch let failure as WorkspaceFailure {
+    if case .staleRevision = failure { return .stale }
+    return .failed(failure.localizedDescription)
+  } catch {
+    return .failed(error.localizedDescription)
+  }
 }
 
 private func repositoryRevisionAssetAndArchiveChecks() async throws {
